@@ -73,6 +73,12 @@
       cursor: pointer;
     }
 
+    .btn-sm {
+      padding: 6px 8px;
+      font-size: 11px;
+      border-radius: 8px;
+    }
+
     .btn-primary {
       background: var(--accent);
       border-color: var(--accent);
@@ -85,6 +91,13 @@
       color: #fca5a5;
       padding: 6px 9px;
       font-size: 11px;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
     }
 
     .tabs {
@@ -383,7 +396,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "progressive_overload_tracker_v10";
+    const STORAGE_KEY = "progressive_overload_tracker_v11";
     const DAYS = ["월", "화", "목", "금"];
     const REP_CHOICES = [8, 10, 12, 15, 20];
     const DAY_NAMES = {
@@ -579,14 +592,70 @@
 
     function getExerciseLogs(day, ex) {
       const key = `${day}_${ex.id}`;
+      const desiredSets = Math.max(1, Number(ex.sets) || 1);
       if (!state.logs[key]) {
-        state.logs[key] = Array.from({ length: ex.sets }, () => ({
+        state.logs[key] = Array.from({ length: desiredSets }, () => ({
+          weight: ex.defaultWeight,
+          reps: ex.targetReps,
+          done: false
+        }));
+      } else if (state.logs[key].length < desiredSets) {
+        const lastRow = state.logs[key][state.logs[key].length - 1] || {
+          weight: ex.defaultWeight,
+          reps: ex.targetReps,
+          done: false
+        };
+        while (state.logs[key].length < desiredSets) {
+          state.logs[key].push({
+            weight: lastRow.weight,
+            reps: lastRow.reps,
+            done: false
+          });
+        }
+      } else if (state.logs[key].length > desiredSets) {
+        state.logs[key] = state.logs[key].slice(0, desiredSets);
+      }
+      return state.logs[key];
+    }
+
+    function changeExerciseSets(exId, delta) {
+      const day = state.activeDay;
+      const ex = (state.routine[day] || []).find(item => item.id === exId);
+      if (!ex) return;
+
+      const currentSets = Math.max(1, Number(ex.sets) || 1);
+      const nextSets = Math.min(8, Math.max(1, currentSets + delta));
+      if (nextSets === currentSets) return;
+
+      const key = `${day}_${ex.id}`;
+      if (!state.logs[key]) {
+        state.logs[key] = Array.from({ length: currentSets }, () => ({
           weight: ex.defaultWeight,
           reps: ex.targetReps,
           done: false
         }));
       }
-      return state.logs[key];
+
+      if (nextSets > currentSets) {
+        const template = state.logs[key][state.logs[key].length - 1] || {
+          weight: ex.defaultWeight,
+          reps: ex.targetReps,
+          done: false
+        };
+        for (let i = currentSets; i < nextSets; i++) {
+          state.logs[key].push({
+            weight: template.weight,
+            reps: template.reps,
+            done: false
+          });
+        }
+      } else {
+        state.logs[key] = state.logs[key].slice(0, nextSets);
+      }
+
+      ex.sets = nextSets;
+      saveState();
+      render();
     }
 
     function calcTotalVolume(day) {
@@ -736,7 +805,7 @@
     }
 
     function resetDefaults() {
-      if (!confirm("종목, 체형/유산소 설정, 기록을 분리된 루틴 초기값으로 되돌릴까요?")) return;
+      if (!confirm("종목, 체형/유산소 설정, 기록을 초기값으로 되돌릴까요?")) return;
       localStorage.removeItem(STORAGE_KEY);
       state = loadState();
       render();
@@ -904,6 +973,8 @@
         const rows = getExerciseLogs(day, ex);
         const guide = evaluateOverload(ex, rows);
         const typeLabel = ex.type === "compound" ? "다관절" : "고립";
+        const canDecrease = rows.length > 1;
+        const canIncrease = rows.length < 8;
 
         const setRowsHtml = rows.map((r, i) => {
           const chipsHtml = REP_CHOICES.map(n =>
@@ -936,10 +1007,15 @@
                 <h2 class="ex-title">${ex.name}</h2>
                 <div class="badges">
                   <span class="badge">${typeLabel}</span>
+                  <span class="badge">${rows.length}세트</span>
                   <span class="badge ${guide.cls}">${guide.text}</span>
                 </div>
               </div>
-              <button class="btn btn-danger" onclick="removeExercise('${ex.id}')">삭제</button>
+              <div class="card-actions">
+                <button class="btn btn-sm" onclick="changeExerciseSets('${ex.id}', -1)" ${canDecrease ? "" : "disabled style='opacity:0.4; cursor:not-allowed;'"}>- 세트</button>
+                <button class="btn btn-sm" onclick="changeExerciseSets('${ex.id}', 1)" ${canIncrease ? "" : "disabled style='opacity:0.4; cursor:not-allowed;'"}>+ 세트</button>
+                <button class="btn btn-danger" onclick="removeExercise('${ex.id}')">삭제</button>
+              </div>
             </div>
             <div class="sets-grid">${setRowsHtml}</div>
           </section>
