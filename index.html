@@ -383,7 +383,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "progressive_overload_tracker_v9";
+    const STORAGE_KEY = "progressive_overload_tracker_v10";
     const DAYS = ["월", "화", "목", "금"];
     const REP_CHOICES = [8, 10, 12, 15, 20];
     const DAY_NAMES = {
@@ -447,6 +447,7 @@
         { id: "mon-chest-fly", name: "체스트 플라이", type: "isolation", targetReps: 12, stepKg: 2.5, defaultWeight: 35, sets: 3, restSec: 90 },
         { id: "mon-oh-db", name: "오버헤드 덤벨 프레스", type: "compound", targetReps: 12, stepKg: 2, defaultWeight: 12, sets: 3, restSec: 120 },
         { id: "mon-slr", name: "사레레 (고립)", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
+        { id: "mon-clr", name: "케레레 (고립)", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
         { id: "mon-pushdown", name: "[삼두] 케이블 푸쉬다운", type: "isolation", targetReps: 15, stepKg: 2.5, defaultWeight: 35, sets: 3, restSec: 90 },
         { id: "mon-ab", name: "케이블크런치 (고립)", type: "isolation", targetReps: 15, stepKg: 2.5, defaultWeight: 30, sets: 4, restSec: 75 }
       ],
@@ -465,6 +466,7 @@
         { id: "thu-bb-row", name: "바벨로우", type: "compound", targetReps: 8, stepKg: 5, defaultWeight: 45, sets: 4, restSec: 120 },
         { id: "thu-mil-press", name: "밀리터리 프레스", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 30, sets: 4, restSec: 120 },
         { id: "thu-slr", name: "사레레 (고립)", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
+        { id: "thu-clr", name: "케레레 (고립)", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
         { id: "thu-tri-oh", name: "[삼두] 덤벨 오버헤드 익스텐션", type: "isolation", targetReps: 15, stepKg: 2, defaultWeight: 16, sets: 3, restSec: 90 },
         { id: "thu-rev-curl", name: "[전완] 리버스 덤벨 컬", type: "isolation", targetReps: 15, stepKg: 2, defaultWeight: 10, sets: 3, restSec: 75 }
       ],
@@ -473,8 +475,10 @@
         { id: "fri-inc-smith", name: "인클라인 스미스 프레스", type: "compound", targetReps: 12, stepKg: 5, defaultWeight: 30, sets: 3, restSec: 120 },
         { id: "fri-low-fly", name: "로우 케이블 플라이", type: "isolation", targetReps: 12, stepKg: 5, defaultWeight: 5, sets: 2, restSec: 75 },
         { id: "fri-lat-pd", name: "랫풀다운", type: "compound", targetReps: 12, stepKg: 5, defaultWeight: 40, sets: 4, restSec: 120 },
-        { id: "fri-ab", name: "행잉레그레이즈 (고립)", type: "isolation", targetReps: 15, stepKg: 5, defaultWeight: 35, sets: 4, restSec: 75 },
-        { id: "fri-slr", name: "케레레 (고립)", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
+        { id: "fri-cable-crunch", name: "케이블크런치 (고립)", type: "isolation", targetReps: 15, stepKg: 5, defaultWeight: 35, sets: 4, restSec: 75 },
+        { id: "fri-hanging-leg", name: "행잉레그레이즈 (고립)", type: "isolation", targetReps: 15, stepKg: 5, defaultWeight: 35, sets: 4, restSec: 75 },
+        { id: "fri-slr", name: "사레레 (고립)", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
+        { id: "fri-clr", name: "케레레 (고립)", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
         { id: "fri-inc-curl", name: "[이두] 인클라인 덤벨 컬", type: "isolation", targetReps: 12, stepKg: 2, defaultWeight: 10, sets: 3, restSec: 90 },
         { id: "fri-rev-wrist", name: "[전완] 리버스 리스트 컬", type: "isolation", targetReps: 20, stepKg: 2, defaultWeight: 10, sets: 3, restSec: 75 }
       ]
@@ -732,7 +736,7 @@
     }
 
     function resetDefaults() {
-      if (!confirm("종목, 체형/유산소 설정, 기록을 새 루틴 초기값으로 되돌릴까요?")) return;
+      if (!confirm("종목, 체형/유산소 설정, 기록을 분리된 루틴 초기값으로 되돌릴까요?")) return;
       localStorage.removeItem(STORAGE_KEY);
       state = loadState();
       render();
