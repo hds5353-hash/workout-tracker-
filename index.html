@@ -253,8 +253,8 @@
 
     .rep-presets {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
       margin-top: 7px;
       padding-left: 58px;
     }
@@ -265,7 +265,7 @@
       color: var(--muted);
       border-radius: 7px;
       padding: 5px 0;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       cursor: pointer;
     }
@@ -383,9 +383,9 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "progressive_overload_tracker_v5";
+    const STORAGE_KEY = "progressive_overload_tracker_v6";
     const DAYS = ["월", "화", "목", "금"];
-    const REP_CHOICES = [8, 10, 12, 15];
+    const REP_CHOICES = [8, 10, 12, 15, 20];
     const DAY_NAMES = {
       "월": "월요일 (가슴·삼두)",
       "화": "화요일 (하체·어깨)",
@@ -401,7 +401,7 @@
       "화": [
         { id: "tue-squat", name: "바벨 스쿼트", type: "compound", targetReps: 10, stepKg: 5, defaultWeight: 70, sets: 4, restSec: 120 },
         { id: "tue-rdl", name: "루마니안 데드리프트", type: "compound", targetReps: 10, stepKg: 5, defaultWeight: 60, sets: 3, restSec: 120 },
-        { id: "tue-slr", name: "사이드 레터럴 레이즈", type: "isolation", targetReps: 12, stepKg: 1, defaultWeight: 6, sets: 4, restSec: 75 }
+        { id: "tue-slr", name: "사이드 레터럴 레이즈", type: "isolation", targetReps: 15, stepKg: 1, defaultWeight: 6, sets: 4, restSec: 75 }
       ],
       "목": [
         { id: "thu-row", name: "바벨 로우 / 시티드 로우", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 50, sets: 3, restSec: 120 },
@@ -528,344 +528,4 @@
         ffmRatio = Math.min(1.15, Math.max(0.9, 0.85 + leanRatio * 0.2));
       }
 
-      const incline = Math.max(0, Math.min(25, Number(state.cardio.inclinePct) || 0));
-      const baseInclineMet = 4.3 + incline * 0.28;
-
-      let cardioKcal = 0;
-      let cardioLabel = "인클라인 트레드밀";
-
-      if (state.cardio.mode === "interval_incline") {
-        cardioLabel = `인클라인 인터벌 (${incline}%)`;
-        const highSec = Math.max(0, Number(state.cardio.highSec) || 0);
-        const lowSec = Math.max(0, Number(state.cardio.lowSec) || 0);
-        const rounds = Math.max(0, Number(state.cardio.rounds) || 0);
-        const totalIntervalSec = (highSec + lowSec) * rounds;
-
-        if (totalIntervalSec > 0) {
-          const highHours = (highSec * rounds) / 3600;
-          const lowHours = (lowSec * rounds) / 3600;
-          const highMet = baseInclineMet * 1.35;
-          const lowMet = Math.max(2.8, baseInclineMet * 0.75);
-          cardioKcal = ((highMet * highHours) + (lowMet * lowHours)) * wKg * ffmRatio;
-        } else {
-          const totalHours = (Number(state.cardio.minutes) || 0) / 60;
-          cardioKcal = (baseInclineMet * 1.15) * wKg * totalHours * ffmRatio;
-        }
-      } else {
-        cardioLabel = `인클라인 트레드밀 (${incline}%)`;
-        const totalHours = (Number(state.cardio.minutes) || 0) / 60;
-        cardioKcal = baseInclineMet * wKg * totalHours * ffmRatio;
-      }
-
-      const liftHours = (Number(state.cardio.liftingMinutes) || 0) / 60;
-      const volumeBonus = volInfo.volume * 0.0035;
-      const liftingKcal = (4.5 * wKg * liftHours * ffmRatio) + volumeBonus;
-
-      return {
-        cardioKcal: Math.round(cardioKcal),
-        liftingKcal: Math.round(liftingKcal),
-        totalKcal: Math.round(cardioKcal + liftingKcal),
-        cardioLabel
-      };
-    }
-
-    function evaluateOverload(ex, rows) {
-      const doneRows = rows.filter(r => r.done);
-      if (!doneRows.length) {
-        return { text: `목표 ${ex.targetReps}회 달성 시 +${ex.stepKg}kg`, cls: "hold" };
-      }
-      const minReps = Math.min(...doneRows.map(r => Number(r.reps) || 0));
-      const maxWeight = Math.max(...doneRows.map(r => Number(r.weight) || 0));
-      if (minReps >= ex.targetReps) {
-        return { text: `증량 신호! 다음 ${(maxWeight + ex.stepKg).toFixed(1).replace(/\.0$/, "")}kg`, cls: "overload" };
-      }
-      return { text: `${ex.targetReps}회 미달 · ${maxWeight}kg 유지`, cls: "hold" };
-    }
-
-    function addCustomExercise(e) {
-      e.preventDefault();
-      const name = document.getElementById("newName").value.trim();
-      if (!name) return;
-
-      const type = document.getElementById("newType").value;
-      const defaultWeight = Math.max(0, parseFloat(document.getElementById("newWeight").value) || 0);
-      const targetReps = Math.max(1, parseInt(document.getElementById("newReps").value, 10) || (type === "compound" ? 10 : 12));
-      const stepKg = Math.max(0.5, parseFloat(document.getElementById("newStep").value) || (type === "compound" ? 2.5 : 1));
-      const sets = Math.min(8, Math.max(1, parseInt(document.getElementById("newSets").value, 10) || 3));
-
-      state.routine[state.activeDay].push({
-        id: `custom-${Date.now()}`,
-        name,
-        type,
-        targetReps,
-        stepKg,
-        defaultWeight,
-        sets,
-        restSec: type === "compound" ? 120 : 90,
-        custom: true
-      });
-
-      saveState();
-      render();
-    }
-
-    function removeExercise(exId) {
-      state.routine[state.activeDay] = state.routine[state.activeDay].filter(item => item.id !== exId);
-      delete state.logs[`${state.activeDay}_${exId}`];
-      saveState();
-      render();
-    }
-
-    function resetDefaults() {
-      if (!confirm("종목, 체형/유산소 설정, 기록을 초기값으로 되돌릴까요?")) return;
-      localStorage.removeItem(STORAGE_KEY);
-      state = loadState();
-      render();
-    }
-
-    function updateSet(day, exId, idx, field, value) {
-      const ex = state.routine[day].find(x => x.id === exId);
-      const rows = getExerciseLogs(day, ex);
-      if (field === "done") {
-        rows[idx].done = !rows[idx].done;
-        if (rows[idx].done) setTimer(ex.restSec || 120);
-      } else {
-        rows[idx][field] = parseFloat(value) || 0;
-      }
-      saveState();
-      render();
-    }
-
-    function setTimer(sec) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-      timerSec = sec;
-      document.getElementById("timerToggleBtn").textContent = "시작";
-      updateTimerDisplay();
-    }
-
-    function toggleTimer() {
-      const btn = document.getElementById("timerToggleBtn");
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-        btn.textContent = "시작";
-      } else {
-        btn.textContent = "정지";
-        timerInterval = setInterval(() => {
-          if (timerSec > 0) {
-            timerSec -= 1;
-            updateTimerDisplay();
-          } else {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            btn.textContent = "시작";
-          }
-        }, 1000);
-      }
-    }
-
-    function updateTimerDisplay() {
-      const m = String(Math.floor(timerSec / 60)).padStart(2, "0");
-      const s = String(timerSec % 60).padStart(2, "0");
-      document.getElementById("timerDisplay").textContent = `${m}:${s}`;
-    }
-
-    function render() {
-      const day = state.activeDay;
-      document.getElementById("dayTabs").innerHTML = DAYS.map(d =>
-        `<button class="tab ${day === d ? "active" : ""}" onclick="state.activeDay='${d}'; saveState(); render();">${d}요일</button>`
-      ).join("");
-
-      const volInfo = calcTotalVolume(day);
-      const kcalInfo = calcEstimatedCalories(volInfo);
-
-      const cardioMetaText = state.cardio.mode === "interval_incline"
-        ? `${kcalInfo.cardioLabel} · ${state.cardio.highSec}초/${state.cardio.lowSec}초 × ${state.cardio.rounds}회`
-        : `${kcalInfo.cardioLabel} · ${state.cardio.minutes}분`;
-
-      document.getElementById("daySummary").textContent = `${DAY_NAMES[day]} · ${cardioMetaText}`;
-
-      const volSubText = volInfo.checkedSets > 0
-        ? `완료 ${volInfo.checkedSets}/${volInfo.totalSets}세트 기준`
-        : `예정 ${volInfo.totalSets}세트 기준 (✓ 체크 시 반영)`;
-
-      const summaryHtml = `
-        <div class="summary-grid">
-          <div class="stat-box">
-            <div class="stat-label">오늘 수행 총 중량</div>
-            <div class="stat-val">${Math.round(volInfo.volume).toLocaleString()} kg</div>
-            <div class="stat-sub">${volSubText}</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-label">예상 소모 칼로리</div>
-            <div class="stat-val">${kcalInfo.totalKcal} kcal</div>
-            <div class="stat-sub">웨이트 ${kcalInfo.liftingKcal} + 유산소 ${kcalInfo.cardioKcal}</div>
-          </div>
-        </div>
-      `;
-
-      const intervalFieldsHtml = state.cardio.mode === "interval_incline" ? `
-        <div class="form-box">
-          <label>고강도 구간 (초)</label>
-          <input type="number" step="5" value="${state.cardio.highSec}" onchange="updateCardio('highSec', this.value)" />
-        </div>
-        <div class="form-box">
-          <label>저강도 구간 (초)</label>
-          <input type="number" step="5" value="${state.cardio.lowSec}" onchange="updateCardio('lowSec', this.value)" />
-        </div>
-        <div class="form-box form-full">
-          <label>인터벌 반복 횟수 (라운드)</label>
-          <input type="number" step="1" value="${state.cardio.rounds}" onchange="updateCardio('rounds', this.value)" />
-        </div>
-      ` : `
-        <div class="form-box form-full">
-          <label>인클라인 트레드밀 시간 (분)</label>
-          <input type="number" step="1" value="${state.cardio.minutes}" onchange="updateCardio('minutes', this.value)" />
-        </div>
-      `;
-
-      const panelHtml = state.showPanel ? `
-        <section class="card">
-          <h2 class="ex-title">체형 변동 및 인클라인 설정</h2>
-          <div class="form-grid">
-            <div class="form-box">
-              <label>현재 몸무게 (kg)</label>
-              <input type="number" step="0.1" value="${state.body.weightKg}" onchange="updateBody('weightKg', this.value)" />
-            </div>
-            <div class="form-box">
-              <label>골격근량 (kg)</label>
-              <input type="number" step="0.1" value="${state.body.skeletalMuscleKg}" onchange="updateBody('skeletalMuscleKg', this.value)" />
-            </div>
-            <div class="form-box">
-              <label>체지방량 (kg)</label>
-              <input type="number" step="0.1" value="${state.body.bodyFatKg}" onchange="updateBody('bodyFatKg', this.value)" />
-            </div>
-            <div class="form-box">
-              <label>웨이트 시간 (분)</label>
-              <input type="number" step="5" value="${state.cardio.liftingMinutes}" onchange="updateCardio('liftingMinutes', this.value)" />
-            </div>
-            <div class="form-box">
-              <label>트레드밀 방식</label>
-              <select onchange="updateCardio('mode', this.value)">
-                <option value="steady_incline" ${state.cardio.mode === "steady_incline" ? "selected" : ""}>인클라인 트레드밀</option>
-                <option value="interval_incline" ${state.cardio.mode === "interval_incline" ? "selected" : ""}>인클라인 인터벌 트레드밀</option>
-              </select>
-            </div>
-            <div class="form-box">
-              <label>인클라인 각도 (%)</label>
-              <input type="number" step="0.5" min="0" max="25" value="${state.cardio.inclinePct}" onchange="updateCardio('inclinePct', this.value)" />
-            </div>
-            ${intervalFieldsHtml}
-          </div>
-          <div class="note">
-            * 인클라인 각도(%)와 인터벌 구간/횟수, 체중·골격근량·체지방량 변동을 조합한 추정치이며 실제 소비량과는 차이가 있을 수 있습니다.
-          </div>
-        </section>
-      ` : "";
-
-      const list = state.routine[day] || [];
-      const cardsHtml = list.map(ex => {
-        const rows = getExerciseLogs(day, ex);
-        const guide = evaluateOverload(ex, rows);
-        const typeLabel = ex.type === "compound" ? "다관절" : "고립";
-
-        const setRowsHtml = rows.map((r, i) => {
-          const chipsHtml = REP_CHOICES.map(n =>
-            `<button type="button" class="rep-chip ${Number(r.reps) === n ? "active" : ""}" onclick="updateSet('${day}', '${ex.id}', ${i}, 'reps', ${n})">${n}회</button>`
-          ).join("");
-
-          return `
-            <div class="set-block">
-              <div class="set-row">
-                <div class="set-label">${i + 1}세트</div>
-                <div class="input-wrap">
-                  <input type="number" step="0.5" value="${r.weight}" onchange="updateSet('${day}', '${ex.id}', ${i}, 'weight', this.value)" />
-                  <span>kg</span>
-                </div>
-                <div class="input-wrap">
-                  <input type="number" value="${r.reps}" onchange="updateSet('${day}', '${ex.id}', ${i}, 'reps', this.value)" />
-                  <span>회</span>
-                </div>
-                <button class="check-btn ${r.done ? "done" : ""}" onclick="updateSet('${day}', '${ex.id}', ${i}, 'done')">✓</button>
-              </div>
-              <div class="rep-presets">${chipsHtml}</div>
-            </div>
-          `;
-        }).join("");
-
-        return `
-          <section class="card">
-            <div class="card-head">
-              <div>
-                <h2 class="ex-title">${ex.name}</h2>
-                <div class="badges">
-                  <span class="badge">${typeLabel}</span>
-                  <span class="badge ${guide.cls}">${guide.text}</span>
-                </div>
-              </div>
-              <button class="btn btn-danger" onclick="removeExercise('${ex.id}')">삭제</button>
-            </div>
-            <div class="sets-grid">${setRowsHtml}</div>
-          </section>
-        `;
-      }).join("");
-
-      const addFormHtml = `
-        <section class="card">
-          <h2 class="ex-title">${day}요일 운동 추가</h2>
-          <form onsubmit="addCustomExercise(event)">
-            <div class="form-grid">
-              <div class="form-box form-full">
-                <label>종목명</label>
-                <input id="newName" type="text" placeholder="예: 랫풀다운, 딥스, 레그프레스" required />
-              </div>
-              <div class="form-box">
-                <label>종목 구분</label>
-                <select id="newType" onchange="onTypeChange(this.value)">
-                  <option value="compound">다관절 (10회 기준)</option>
-                  <option value="isolation">고립 (12회 기준)</option>
-                </select>
-              </div>
-              <div class="form-box">
-                <label>시작 중량 (kg)</label>
-                <input id="newWeight" type="number" step="0.5" value="20" />
-              </div>
-              <div class="form-box">
-                <label>목표 횟수</label>
-                <input id="newReps" type="number" value="10" />
-              </div>
-              <div class="form-box">
-                <label>증량 폭 (kg)</label>
-                <input id="newStep" type="number" step="0.5" value="2.5" />
-              </div>
-              <div class="form-box form-full">
-                <label>세트 수</label>
-                <input id="newSets" type="number" min="1" max="8" value="3" />
-              </div>
-            </div>
-            <div style="margin-top:10px; text-align:right;">
-              <button class="btn btn-primary" type="submit">+ ${day}요일에 추가</button>
-            </div>
-          </form>
-        </section>
-      `;
-
-      document.getElementById("app").innerHTML = summaryHtml + panelHtml + cardsHtml + addFormHtml;
-    }
-
-    function onTypeChange(type) {
-      if (type === "compound") {
-        document.getElementById("newReps").value = 10;
-        document.getElementById("newStep").value = 2.5;
-      } else {
-        document.getElementById("newReps").value = 12;
-        document.getElementById("newStep").value = 1;
-      }
-    }
-
-    updateTimerDisplay();
-    render();
-  </script>
-</body>
-</html>
+      const incline = Math.max(0
