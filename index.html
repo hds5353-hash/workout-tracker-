@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>점진적 과부하 트래커</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #181b22;
+      --card-2: #202530;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.15);
+      --green: #10b981;
+      --green-soft: rgba(16, 185, 129, 0.15);
+      --amber: #f59e0b;
+      --amber-soft: rgba(245, 158, 11, 0.15);
+      --red: #ef4444;
+      --border: #2b303c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding-bottom: 84px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(15, 17, 21, 0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px 10px;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.14);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      padding: 6px 9px;
+      font-size: 11px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .tab {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--muted);
+      border-radius: 10px;
+      padding: 8px 4px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: #93c5fd;
+    }
+
+    main {
+      padding: 14px 16px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .ex-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0 0 4px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--card-2);
+      color: var(--muted);
+    }
+
+    .badge.overload {
+      background: var(--green-soft);
+      color: #6ee7b7;
+    }
+
+    .badge.hold {
+      background: var(--amber-soft);
+      color: #fcd34d;
+    }
+
+    .sets-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .set-row {
+      display: grid;
+      grid-template-columns: 54px 1fr 1fr 34px;
+      gap: 8px;
+      align-items: center;
+      background: var(--card-2);
+      padding: 8px;
+      border-radius: 10px;
+    }
+
+    .set-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .input-wrap {
+      display: flex;
+      align-items: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 8px;
+    }
+
+    .input-wrap span {
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
+    input, select {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 14px;
+      padding: 8px 0;
+      outline: none;
+    }
+
+    select option {
+      background: var(--card);
+      color: var(--text);
+    }
+
+    .check-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .check-btn.done {
+      background: var(--green);
+      border-color: var(--green);
+      color: #06281e;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .form-box {
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+    }
+
+    .form-box label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .form-box input, .form-box select {
+      padding: 4px 0;
+      font-size: 13px;
+    }
+
+    .form-full {
+      grid-column: 1 / -1;
+    }
+
+    .timer-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #141820;
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      z-index: 30;
+    }
+
+    .timer-time {
+      font-size: 18px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="top-row">
+      <div>
+        <h1>점진적 과부하 트래커</h1>
+        <div class="sub" id="daySummary">주 4회 루틴 · 유산소 20분 고정</div>
+      </div>
+      <button class="btn" onclick="resetDefaults()">기본값 복원</button>
+    </div>
+    <div class="tabs" id="dayTabs"></div>
+  </header>
+
+  <main id="app"></main>
+
+  <div class="timer-bar">
+    <div>
+      <div style="font-size:11px; color:var(--muted);">휴식 타이머</div>
+      <div class="timer-time" id="timerDisplay">02:00</div>
+    </div>
+    <div style="display:flex; gap:6px;">
+      <button class="btn" onclick="setTimer(60)">1분</button>
+      <button class="btn" onclick="setTimer(90)">1분30초</button>
+      <button class="btn" onclick="setTimer(120)">2분</button>
+      <button class="btn btn-primary" id="timerToggleBtn" onclick="toggleTimer()">시작</button>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "progressive_overload_tracker_v2";
+    const DAYS = ["월", "화", "목", "금"];
+    const DAY_NAMES = {
+      "월": "월요일 (가슴·삼두·유산소)",
+      "화": "화요일 (하체·어깨·유산소)",
+      "목": "목요일 (등·이두·유산소)",
+      "금": "금요일 (가슴 상부·등 보조·유산소)"
+    };
+
+    const DEFAULT_ROUTINE = {
+      "월": [
+        { id: "mon-bench", name: "바벨 벤치프레스", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 60, sets: 4, restSec: 120 },
+        { id: "mon-fly", name: "케이블 플라이", type: "isolation", targetReps: 12, stepKg: 1.5, defaultWeight: 10, sets: 3, restSec: 90 }
+      ],
+      "화": [
+        { id: "tue-squat", name: "바벨 스쿼트", type: "compound", targetReps: 10, stepKg: 5, defaultWeight: 70, sets: 4, restSec: 120 },
+        { id: "tue-rdl", name: "루마니안 데드리프트", type: "compound", targetReps: 10, stepKg: 5, defaultWeight: 60, sets: 3, restSec: 120 },
+        { id: "tue-slr", name: "사이드 레터럴 레이즈", type: "isolation", targetReps: 12, stepKg: 1, defaultWeight: 6, sets: 4, restSec: 75 }
+      ],
+      "목": [
+        { id: "thu-row", name: "바벨 로우 / 시티드 로우", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 50, sets: 3, restSec: 120 },
+        { id: "thu-curl", name: "이지바 바벨컬", type: "isolation", targetReps: 12, stepKg: 2.5, defaultWeight: 25, sets: 3, restSec: 90 }
+      ],
+      "금": [
+        { id: "fri-db-bench", name: "덤벨 벤치프레스", type: "compound", targetReps: 10, stepKg: 2, defaultWeight: 14, sets: 4, restSec: 120 },
+        { id: "fri-inc-smith", name: "인클라인 스미스 프레스", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 40, sets: 3, restSec: 120 },
+        { id: "fri-low-fly", name: "로우 케이블 플라이", type: "isolation", targetReps: 12, stepKg: 1.5, defaultWeight: 7.5, sets: 2, restSec: 60 }
+      ]
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return {
+        activeDay: "월",
+        routine: structuredClone(DEFAULT_ROUTINE),
+        logs: {}
+      };
+    }
+
+    let state = loadState();
+    let timerSec = 120;
+    let timerInterval = null;
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function getExerciseLogs(day, ex) {
+      const key = `${day}_${ex.id}`;
+      if (!state.logs[key]) {
+        state.logs[key] = Array.from({ length: ex.sets }, () => ({
+          weight: ex.defaultWeight,
+          reps: ex.targetReps,
+          done: false
+        }));
+      }
+      return state.logs[key];
+    }
+
+    function evaluateOverload(ex, rows) {
+      const doneRows = rows.filter(r => r.done);
+      if (!doneRows.length) {
+        return { text: `목표 ${ex.targetReps}회 달성 시 +${ex.stepKg}kg`, cls: "hold" };
+      }
+      const minReps = Math.min(...doneRows.map(r => Number(r.reps) || 0));
+      const maxWeight = Math.max(...doneRows.map(r => Number(r.weight) || 0));
+      if (minReps >= ex.targetReps) {
+        return { text: `증량 신호! 다음 ${(maxWeight + ex.stepKg).toFixed(1).replace(/\.0$/, "")}kg`, cls: "overload" };
+      }
+      return { text: `${ex.targetReps}회 미달 · ${maxWeight}kg 유지`, cls: "hold" };
+    }
+
+    function addCustomExercise(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById("newName");
+      const typeInput = document.getElementById("newType");
+      const weightInput = document.getElementById("newWeight");
+      const repsInput = document.getElementById("newReps");
+      const stepInput = document.getElementById("newStep");
+      const setsInput = document.getElementById("newSets");
+
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      const type = typeInput.value;
+      const defaultWeight = Math.max(0, parseFloat(weightInput.value) || 0);
+      const targetReps = Math.max(1, parseInt(repsInput.value, 10) || (type === "compound" ? 10 : 12));
+      const stepKg = Math.max(0.5, parseFloat(stepInput.value) || (type === "compound" ? 2.5 : 1));
+      const sets = Math.min(8, Math.max(1, parseInt(setsInput.value, 10) || 3));
+
+      const newEx = {
+        id: `custom-${Date.now()}`,
+        name,
+        type,
+        targetReps,
+        stepKg,
+        defaultWeight,
+        sets,
+        restSec: type === "compound" ? 120 : 90,
+        custom: true
+      };
+
+      state.routine[state.activeDay].push(newEx);
+      saveState();
+      render();
+    }
+
+    function removeExercise(exId) {
+      state.routine[state.activeDay] = state.routine[state.activeDay].filter(item => item.id !== exId);
+      delete state.logs[`${state.activeDay}_${exId}`];
+      saveState();
+      render();
+    }
+
+    function resetDefaults() {
+      if (!confirm("추가한 종목과 기록을 기본 루틴으로 되돌릴까요?")) return;
+      state = {
+        activeDay: state.activeDay,
+        routine: structuredClone(DEFAULT_ROUTINE),
+        logs: {}
+      };
+      saveState();
+      render();
+    }
+
+    function updateSet(day, exId, idx, field, value) {
+      const ex = state.routine[day].find(x => x.id === exId);
+      const rows = getExerciseLogs(day, ex);
+      if (field === "done") {
+        rows[idx].done = !rows[idx].done;
+        if (rows[idx].done) setTimer(ex.restSec || 120);
+      } else {
+        rows[idx][field] = parseFloat(value) || 0;
+      }
+      saveState();
+      render();
+    }
+
+    function setTimer(sec) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      timerSec = sec;
+      document.getElementById("timerToggleBtn").textContent = "시작";
+      updateTimerDisplay();
+    }
+
+    function toggleTimer() {
+      const btn = document.getElementById("timerToggleBtn");
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        btn.textContent = "시작";
+      } else {
+        btn.textContent = "정지";
+        timerInterval = setInterval(() => {
+          if (timerSec > 0) {
+            timerSec -= 1;
+            updateTimerDisplay();
+          } else {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            btn.textContent = "시작";
+          }
+        }, 1000);
+      }
+    }
+
+    function updateTimerDisplay() {
+      const m = String(Math.floor(timerSec / 60)).padStart(2, "0");
+      const s = String(timerSec % 60).padStart(2, "0");
+      document.getElementById("timerDisplay").textContent = `${m}:${s}`;
+    }
+
+    function render() {
+      const tabsEl = document.getElementById("dayTabs");
+      tabsEl.innerHTML = DAYS.map(d =>
+        `<button class="tab ${state.activeDay === d ? "active" : ""}" onclick="state.activeDay='${d}'; saveState(); render();">${d}요일</button>`
+      ).join("");
+
+      document.getElementById("daySummary").textContent = `${DAY_NAMES[state.activeDay]} · 유산소 20분 고정`;
+
+      const list = state.routine[state.activeDay] || [];
+      const cardsHtml = list.map(ex => {
+        const rows = getExerciseLogs(state.activeDay, ex);
+        const guide = evaluateOverload(ex, rows);
+        const typeLabel = ex.type === "compound" ? "다관절" : "고립";
+
+        const setRowsHtml = rows.map((r, i) => `
+          <div class="set-row">
+            <div class="set-label">${i + 1}세트</div>
+            <div class="input-wrap">
+              <input type="number" step="0.5" value="${r.weight}" onchange="updateSet('${state.activeDay}', '${ex.id}', ${i}, 'weight', this.value)" />
+              <span>kg</span>
+            </div>
+            <div class="input-wrap">
+              <input type="number" value="${r.reps}" onchange="updateSet('${state.activeDay}', '${ex.id}', ${i}, 'reps', this.value)" />
+              <span>회</span>
+            </div>
+            <button class="check-btn ${r.done ? "done" : ""}" onclick="updateSet('${state.activeDay}', '${ex.id}', ${i}, 'done')">✓</button>
+          </div>
+        `).join("");
+
+        return `
+          <section class="card">
+            <div class="card-head">
+              <div>
+                <h2 class="ex-title">${ex.name}</h2>
+                <div class="badges">
+                  <span class="badge">${typeLabel}</span>
+                  <span class="badge ${guide.cls}">${guide.text}</span>
+                </div>
+              </div>
+              <button class="btn btn-danger" onclick="removeExercise('${ex.id}')">삭제</button>
+            </div>
+            <div class="sets-grid">${setRowsHtml}</div>
+          </section>
+        `;
+      }).join("");
+
+      const addFormHtml = `
+        <section class="card">
+          <h2 class="ex-title">${state.activeDay}요일 운동 추가</h2>
+          <form onsubmit="addCustomExercise(event)">
+            <div class="form-grid">
+              <div class="form-box form-full">
+                <label>종목명</label>
+                <input id="newName" type="text" placeholder="예: 랫풀다운, 딥스, 레그프레스" required />
+              </div>
+              <div class="form-box">
+                <label>종목 구분</label>
+                <select id="newType" onchange="onTypeChange(this.value)">
+                  <option value="compound">다관절 (10회 기준)</option>
+                  <option value="isolation">고립 (12회 기준)</option>
+                </select>
+              </div>
+              <div class="form-box">
+                <label>시작 중량 (kg)</label>
+                <input id="newWeight" type="number" step="0.5" value="20" />
+              </div>
+              <div class="form-box">
+                <label>목표 횟수</label>
+                <input id="newReps" type="number" value="10" />
+              </div>
+              <div class="form-box">
+                <label>증량 폭 (kg)</label>
+                <input id="newStep" type="number" step="0.5" value="2.5" />
+              </div>
+              <div class="form-box form-full">
+                <label>세트 수</label>
+                <input id="newSets" type="number" min="1" max="8" value="3" />
+              </div>
+            </div>
+            <div style="margin-top:10px; text-align:right;">
+              <button class="btn btn-primary" type="submit">+ ${state.activeDay}요일에 추가</button>
+            </div>
+          </form>
+        </section>
+      `;
+
+      document.getElementById("app").innerHTML = cardsHtml + addFormHtml;
+    }
+
+    function onTypeChange(type) {
+      if (type === "compound") {
+        document.getElementById("newReps").value = 10;
+        document.getElementById("newStep").value = 2.5;
+      } else {
+        document.getElementById("newReps").value = 12;
+        document.getElementById("newStep").value = 1;
+      }
+    }
+
+    updateTimerDisplay();
+    render();
+  </script>
+</body>
+</html>
