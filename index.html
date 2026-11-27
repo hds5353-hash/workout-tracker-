@@ -383,34 +383,100 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "progressive_overload_tracker_v6";
+    const STORAGE_KEY = "progressive_overload_tracker_v8";
     const DAYS = ["월", "화", "목", "금"];
     const REP_CHOICES = [8, 10, 12, 15, 20];
     const DAY_NAMES = {
-      "월": "월요일 (가슴·삼두)",
-      "화": "화요일 (하체·어깨)",
-      "목": "목요일 (등·이두)",
-      "금": "금요일 (가슴 상부·보조)"
+      "월": "월요일: 상체 프레임 A (가슴·어깨·삼두)",
+      "화": "화요일: 하체 & 호르몬 Day (하체·등·이두)",
+      "목": "목요일: 상체 디테일 B (등/어깨·삼두/전완)",
+      "금": "금요일: 상체 하이라이트 C (가슴/어깨·이두/전완)"
+    };
+
+    const DAY_CARDIO_PRESETS = {
+      "월": {
+        mode: "interval_incline",
+        inclinePct: 11,
+        minutes: 20,
+        warmupSec: 120,
+        lowSpeedKmh: 3.3,
+        highSpeedKmh: 5.0,
+        highSec: 60,
+        lowSec: 120,
+        rounds: 5
+      },
+      "화": {
+        mode: "steady_incline",
+        inclinePct: 12,
+        minutes: 20,
+        warmupSec: 120,
+        lowSpeedKmh: 3.3,
+        highSpeedKmh: 5.5,
+        highSec: 60,
+        lowSec: 120,
+        rounds: 6
+      },
+      "목": {
+        mode: "interval_incline",
+        inclinePct: 11,
+        minutes: 20,
+        warmupSec: 120,
+        lowSpeedKmh: 3.3,
+        highSpeedKmh: 5.0,
+        highSec: 60,
+        lowSec: 120,
+        rounds: 5
+      },
+      "금": {
+        mode: "interval_incline",
+        inclinePct: 11,
+        minutes: 20,
+        warmupSec: 120,
+        lowSpeedKmh: 3.3,
+        highSpeedKmh: 5.0,
+        highSec: 60,
+        lowSec: 120,
+        rounds: 5
+      }
     };
 
     const DEFAULT_ROUTINE = {
       "월": [
-        { id: "mon-bench", name: "바벨 벤치프레스", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 60, sets: 4, restSec: 120 },
-        { id: "mon-fly", name: "케이블 플라이", type: "isolation", targetReps: 12, stepKg: 1.5, defaultWeight: 10, sets: 3, restSec: 90 }
+        { id: "mon-bench", name: "바벨 벤치프레스", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 55, sets: 4, restSec: 120 },
+        { id: "mon-inc-db", name: "인클라인 덤벨 프레스", type: "compound", targetReps: 12, stepKg: 2, defaultWeight: 14, sets: 3, restSec: 120 },
+        { id: "mon-chest-fly", name: "체스트 플라이", type: "isolation", targetReps: 12, stepKg: 2.5, defaultWeight: 35, sets: 3, restSec: 90 },
+        { id: "mon-oh-db", name: "오버헤드 덤벨 프레스", type: "compound", targetReps: 12, stepKg: 2, defaultWeight: 12, sets: 3, restSec: 120 },
+        { id: "mon-slr", name: "사레레 / 케레레", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
+        { id: "mon-pushdown", name: "[삼두] 케이블 푸쉬다운", type: "isolation", targetReps: 15, stepKg: 2.5, defaultWeight: 35, sets: 3, restSec: 90 },
+        { id: "mon-ab", name: "케이블크런치 / 행잉레그레이즈", type: "isolation", targetReps: 15, stepKg: 2.5, defaultWeight: 30, sets: 4, restSec: 75 }
       ],
       "화": [
-        { id: "tue-squat", name: "바벨 스쿼트", type: "compound", targetReps: 10, stepKg: 5, defaultWeight: 70, sets: 4, restSec: 120 },
-        { id: "tue-rdl", name: "루마니안 데드리프트", type: "compound", targetReps: 10, stepKg: 5, defaultWeight: 60, sets: 3, restSec: 120 },
-        { id: "tue-slr", name: "사이드 레터럴 레이즈", type: "isolation", targetReps: 15, stepKg: 1, defaultWeight: 6, sets: 4, restSec: 75 }
+        { id: "tue-squat", name: "바벨 스쿼트", type: "compound", targetReps: 10, stepKg: 5, defaultWeight: 60, sets: 4, restSec: 120 },
+        { id: "tue-rdl", name: "루마니안 데드리프트", type: "compound", targetReps: 12, stepKg: 5, defaultWeight: 60, sets: 3, restSec: 120 },
+        { id: "tue-inner", name: "이너타이머신", type: "isolation", targetReps: 20, stepKg: 2.5, defaultWeight: 40, sets: 3, restSec: 75 },
+        { id: "tue-outer", name: "아웃타이머신", type: "isolation", targetReps: 20, stepKg: 5, defaultWeight: 75, sets: 3, restSec: 75 },
+        { id: "tue-calf", name: "카프레이즈 (덤벨)", type: "isolation", targetReps: 20, stepKg: 2.5, defaultWeight: 10, sets: 3, restSec: 75 },
+        { id: "tue-arm-pd", name: "암풀다운", type: "isolation", targetReps: 12, stepKg: 2.5, defaultWeight: 35, sets: 3, restSec: 90 },
+        { id: "tue-curl", name: "[이두] 바벨 컬 (또는 EZ바)", type: "isolation", targetReps: 12, stepKg: 2.5, defaultWeight: 25, sets: 3, restSec: 90 }
       ],
       "목": [
-        { id: "thu-row", name: "바벨 로우 / 시티드 로우", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 50, sets: 3, restSec: 120 },
-        { id: "thu-curl", name: "이지바 바벨컬", type: "isolation", targetReps: 12, stepKg: 2.5, defaultWeight: 25, sets: 3, restSec: 90 }
+        { id: "thu-pullup", name: "풀업", type: "compound", targetReps: 4, stepKg: 1, defaultWeight: 0, sets: 3, restSec: 120 },
+        { id: "thu-cable-row", name: "시티드 케이블 로우", type: "compound", targetReps: 12, stepKg: 2.5, defaultWeight: 45, sets: 4, restSec: 120 },
+        { id: "thu-bb-row", name: "바벨로우", type: "compound", targetReps: 8, stepKg: 5, defaultWeight: 45, sets: 4, restSec: 120 },
+        { id: "thu-mil-press", name: "밀리터리 프레스", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 30, sets: 4, restSec: 120 },
+        { id: "thu-slr", name: "사이드 / 케이블 레터럴 레이즈", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
+        { id: "thu-tri-oh", name: "[삼두] 덤벨 오버헤드 익스텐션", type: "isolation", targetReps: 15, stepKg: 2, defaultWeight: 16, sets: 3, restSec: 90 },
+        { id: "thu-rev-curl", name: "[전완] 리버스 덤벨 컬", type: "isolation", targetReps: 15, stepKg: 2, defaultWeight: 10, sets: 3, restSec: 75 }
       ],
       "금": [
-        { id: "fri-db-bench", name: "덤벨 벤치프레스", type: "compound", targetReps: 10, stepKg: 2, defaultWeight: 14, sets: 4, restSec: 120 },
-        { id: "fri-inc-smith", name: "인클라인 스미스 프레스", type: "compound", targetReps: 10, stepKg: 2.5, defaultWeight: 40, sets: 3, restSec: 120 },
-        { id: "fri-low-fly", name: "로우 케이블 플라이", type: "isolation", targetReps: 12, stepKg: 1.5, defaultWeight: 7.5, sets: 2, restSec: 60 }
+        { id: "fri-db-bench", name: "덤벨 벤치프레스", type: "compound", targetReps: 12, stepKg: 2, defaultWeight: 14, sets: 4, restSec: 120 },
+        { id: "fri-inc-smith", name: "인클라인 스미스 프레스", type: "compound", targetReps: 12, stepKg: 5, defaultWeight: 30, sets: 3, restSec: 120 },
+        { id: "fri-low-fly", name: "로우 케이블 플라이", type: "isolation", targetReps: 12, stepKg: 5, defaultWeight: 5, sets: 2, restSec: 75 },
+        { id: "fri-lat-pd", name: "랫풀다운", type: "compound", targetReps: 12, stepKg: 5, defaultWeight: 40, sets: 4, restSec: 120 },
+        { id: "fri-ab", name: "케이블크런치 / 행잉 레그레이즈", type: "isolation", targetReps: 15, stepKg: 5, defaultWeight: 35, sets: 4, restSec: 75 },
+        { id: "fri-slr", name: "사레레 / 케레레", type: "isolation", targetReps: 20, stepKg: 1, defaultWeight: 5, sets: 4, restSec: 75 },
+        { id: "fri-inc-curl", name: "[이두] 인클라인 덤벨 컬", type: "isolation", targetReps: 12, stepKg: 2, defaultWeight: 10, sets: 3, restSec: 90 },
+        { id: "fri-rev-wrist", name: "[전완] 리버스 리스트 컬", type: "isolation", targetReps: 20, stepKg: 2, defaultWeight: 10, sets: 3, restSec: 75 }
       ]
     };
 
@@ -421,20 +487,15 @@
       } catch (e) {}
       return {
         activeDay: "월",
-        showPanel: true,
+        showPanel: false,
         body: {
           weightKg: 70,
           skeletalMuscleKg: 33,
           bodyFatKg: 12
         },
         cardio: {
-          mode: "steady_incline",
-          inclinePct: 8,
-          minutes: 20,
-          liftingMinutes: 55,
-          highSec: 30,
-          lowSec: 30,
-          rounds: 15
+          ...DAY_CARDIO_PRESETS["월"],
+          liftingMinutes: 35
         },
         routine: structuredClone(DEFAULT_ROUTINE),
         logs: {}
@@ -447,6 +508,19 @@
 
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function switchDay(d) {
+      state.activeDay = d;
+      const preset = DAY_CARDIO_PRESETS[d];
+      if (preset) {
+        state.cardio = {
+          ...preset,
+          liftingMinutes: state.cardio.liftingMinutes ?? 35
+        };
+      }
+      saveState();
+      render();
     }
 
     function togglePanel() {
@@ -514,52 +588,65 @@
       };
     }
 
+    function calcWalkMet(speedKmh, inclinePct) {
+      const spd = Math.max(0.5, Number(speedKmh) || 3.3);
+      const inc = Math.max(0, Math.min(25, Number(inclinePct) || 0)) / 100;
+      const speedMPerMin = (spd * 1000) / 60;
+      const vo2 = 0.1 * speedMPerMin + 1.8 * speedMPerMin * inc + 3.5;
+      return Math.max(2.0, vo2 / 3.5);
+    }
+
     function calcEstimatedCalories(volInfo) {
       const wKg = Math.max(35, Number(state.body.weightKg) || 70);
       const smmKg = Math.max(0, Number(state.body.skeletalMuscleKg) || 0);
       const fatKg = Math.max(0, Number(state.body.bodyFatKg) || 0);
 
-      let ffmRatio = 1.0;
+      let ffmFactor = 1.0;
       if (smmKg > 0 && wKg > 0) {
         const estFfm = Math.min(wKg, smmKg * 1.28);
-        ffmRatio = Math.min(1.15, Math.max(0.9, 0.88 + (estFfm / wKg) * 0.16));
+        ffmFactor = Math.min(1.08, Math.max(0.94, 0.92 + (estFfm / wKg) * 0.1));
       } else if (fatKg > 0 && wKg > fatKg) {
         const leanRatio = (wKg - fatKg) / wKg;
-        ffmRatio = Math.min(1.15, Math.max(0.9, 0.85 + leanRatio * 0.2));
+        ffmFactor = Math.min(1.08, Math.max(0.94, 0.9 + leanRatio * 0.12));
       }
 
       const incline = Math.max(0, Math.min(25, Number(state.cardio.inclinePct) || 0));
-      const baseInclineMet = 4.3 + incline * 0.28;
+      const lowSpd = Math.max(0.5, Number(state.cardio.lowSpeedKmh) || 3.3);
+      const highSpd = Math.max(0.5, Number(state.cardio.highSpeedKmh) || 5.5);
+
+      const lowMet = calcWalkMet(lowSpd, incline);
+      const highMet = calcWalkMet(highSpd, incline);
 
       let cardioKcal = 0;
       let cardioLabel = "인클라인 트레드밀";
 
       if (state.cardio.mode === "interval_incline") {
-        cardioLabel = `인클라인 인터벌 (${incline}%)`;
+        cardioLabel = `인터벌 (${incline}%, ${lowSpd}/${highSpd}km/h)`;
+        const warmupHours = (Math.max(0, Number(state.cardio.warmupSec) || 0)) / 3600;
         const highSec = Math.max(0, Number(state.cardio.highSec) || 0);
         const lowSec = Math.max(0, Number(state.cardio.lowSec) || 0);
         const rounds = Math.max(0, Number(state.cardio.rounds) || 0);
-        const totalIntervalSec = (highSec + lowSec) * rounds;
 
-        if (totalIntervalSec > 0) {
-          const highHours = (highSec * rounds) / 3600;
-          const lowHours = (lowSec * rounds) / 3600;
-          const highMet = baseInclineMet * 1.35;
-          const lowMet = Math.max(2.8, baseInclineMet * 0.75);
-          cardioKcal = ((highMet * highHours) + (lowMet * lowHours)) * wKg * ffmRatio;
-        } else {
-          const totalHours = (Number(state.cardio.minutes) || 0) / 60;
-          cardioKcal = (baseInclineMet * 1.15) * wKg * totalHours * ffmRatio;
-        }
+        const highHours = (highSec * rounds) / 3600;
+        const lowHours = (lowSec * rounds) / 3600;
+        const cooldownMet = calcWalkMet(3.0, 5);
+        const cooldownHours = 180 / 3600;
+
+        cardioKcal = (
+          lowMet * warmupHours +
+          highMet * highHours +
+          lowMet * lowHours +
+          cooldownMet * cooldownHours
+        ) * wKg * ffmFactor;
       } else {
-        cardioLabel = `인클라인 트레드밀 (${incline}%)`;
+        cardioLabel = `기본 (${incline}%, ${lowSpd}km/h)`;
         const totalHours = (Number(state.cardio.minutes) || 0) / 60;
-        cardioKcal = baseInclineMet * wKg * totalHours * ffmRatio;
+        cardioKcal = lowMet * wKg * totalHours * ffmFactor;
       }
 
       const liftHours = (Number(state.cardio.liftingMinutes) || 0) / 60;
-      const volumeBonus = volInfo.volume * 0.0035;
-      const liftingKcal = (4.5 * wKg * liftHours * ffmRatio) + volumeBonus;
+      const volumeBonus = volInfo.volume * 0.002;
+      const liftingKcal = (4.2 * wKg * liftHours * ffmFactor) + volumeBonus;
 
       return {
         cardioKcal: Math.round(cardioKcal),
@@ -617,7 +704,7 @@
     }
 
     function resetDefaults() {
-      if (!confirm("종목, 체형/유산소 설정, 기록을 초기값으로 되돌릴까요?")) return;
+      if (!confirm("종목, 체형/유산소 설정, 기록을 새 루틴 초기값으로 되돌릴까요?")) return;
       localStorage.removeItem(STORAGE_KEY);
       state = loadState();
       render();
@@ -674,14 +761,14 @@
     function render() {
       const day = state.activeDay;
       document.getElementById("dayTabs").innerHTML = DAYS.map(d =>
-        `<button class="tab ${day === d ? "active" : ""}" onclick="state.activeDay='${d}'; saveState(); render();">${d}요일</button>`
+        `<button class="tab ${day === d ? "active" : ""}" onclick="switchDay('${d}')">${d}요일</button>`
       ).join("");
 
       const volInfo = calcTotalVolume(day);
       const kcalInfo = calcEstimatedCalories(volInfo);
 
       const cardioMetaText = state.cardio.mode === "interval_incline"
-        ? `${kcalInfo.cardioLabel} · ${state.cardio.highSec}초/${state.cardio.lowSec}초 × ${state.cardio.rounds}회`
+        ? `${kcalInfo.cardioLabel} · 워밍업 ${state.cardio.warmupSec}초 + ${state.cardio.highSec}초/${state.cardio.lowSec}초 × ${state.cardio.rounds}회`
         : `${kcalInfo.cardioLabel} · ${state.cardio.minutes}분`;
 
       document.getElementById("daySummary").textContent = `${DAY_NAMES[day]} · ${cardioMetaText}`;
@@ -707,21 +794,37 @@
 
       const intervalFieldsHtml = state.cardio.mode === "interval_incline" ? `
         <div class="form-box">
-          <label>고강도 구간 (초)</label>
-          <input type="number" step="5" value="${state.cardio.highSec}" onchange="updateCardio('highSec', this.value)" />
+          <label>워밍업 시간 (초)</label>
+          <input type="number" step="10" value="${state.cardio.warmupSec}" onchange="updateCardio('warmupSec', this.value)" />
         </div>
         <div class="form-box">
-          <label>저강도 구간 (초)</label>
-          <input type="number" step="5" value="${state.cardio.lowSec}" onchange="updateCardio('lowSec', this.value)" />
-        </div>
-        <div class="form-box form-full">
           <label>인터벌 반복 횟수 (라운드)</label>
           <input type="number" step="1" value="${state.cardio.rounds}" onchange="updateCardio('rounds', this.value)" />
         </div>
+        <div class="form-box">
+          <label>고강도 시간 (초)</label>
+          <input type="number" step="5" value="${state.cardio.highSec}" onchange="updateCardio('highSec', this.value)" />
+        </div>
+        <div class="form-box">
+          <label>저강도 휴식 (초)</label>
+          <input type="number" step="5" value="${state.cardio.lowSec}" onchange="updateCardio('lowSec', this.value)" />
+        </div>
+        <div class="form-box">
+          <label>고강도 속도 (km/h)</label>
+          <input type="number" step="0.1" value="${state.cardio.highSpeedKmh}" onchange="updateCardio('highSpeedKmh', this.value)" />
+        </div>
+        <div class="form-box">
+          <label>워밍업·저강도 속도 (km/h)</label>
+          <input type="number" step="0.1" value="${state.cardio.lowSpeedKmh}" onchange="updateCardio('lowSpeedKmh', this.value)" />
+        </div>
       ` : `
-        <div class="form-box form-full">
+        <div class="form-box">
           <label>인클라인 트레드밀 시간 (분)</label>
           <input type="number" step="1" value="${state.cardio.minutes}" onchange="updateCardio('minutes', this.value)" />
+        </div>
+        <div class="form-box">
+          <label>속도 (km/h)</label>
+          <input type="number" step="0.1" value="${state.cardio.lowSpeedKmh}" onchange="updateCardio('lowSpeedKmh', this.value)" />
         </div>
       `;
 
@@ -742,7 +845,7 @@
               <input type="number" step="0.1" value="${state.body.bodyFatKg}" onchange="updateBody('bodyFatKg', this.value)" />
             </div>
             <div class="form-box">
-              <label>웨이트 시간 (분)</label>
+              <label>순수 웨이트 시간 (분, 휴식 제외)</label>
               <input type="number" step="5" value="${state.cardio.liftingMinutes}" onchange="updateCardio('liftingMinutes', this.value)" />
             </div>
             <div class="form-box">
@@ -759,7 +862,7 @@
             ${intervalFieldsHtml}
           </div>
           <div class="note">
-            * 인클라인 각도(%)와 인터벌 구간/횟수, 체중·골격근량·체지방량 변동을 조합한 추정치이며 실제 소비량과는 차이가 있을 수 있습니다.
+            * 보행 속도(km/h)와 경사도(%), 워밍업·인터벌·마무리 쿨다운 및 체성분 변동을 반영한 추정치입니다.
           </div>
         </section>
       ` : "";
