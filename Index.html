@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PRO-LOAD | 점진적 과부하 워크아웃 트래커</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Pretendard -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tone.js for Rest Timer Sound -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
+          },
+          colors: {
+            gym: {
+              bg: '#0B0F19',
+              card: '#131A2A',
+              surface: '#1C253B',
+              border: '#27334F',
+              blue: '#3B82F6',
+              emerald: '#10B981',
+              amber: '#F59E0B',
+              rose: '#F43F5E'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0B0F19;
+      color: #F1F5F9;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0B0F19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #27334F;
+      border-radius: 9999px;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col pb-28">
+
+  <!-- Top Sticky Header -->
+  <header class="sticky top-0 z-30 bg-gym-bg/90 backdrop-blur-md border-b border-gym-border px-4 py-3">
+    <div class="max-w-2xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <svg class="w-5 h-5 text-slate-950 font-bold" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-extrabold tracking-tight text-white leading-tight">PRO-LOAD <span class="text-xs font-semibold text-emerald-400 ml-1">4분할</span></h1>
+          <p class="text-[11px] text-slate-400">더블 프로그레션 자동 증량 가이드</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openModal('exerciseModal')" class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 transition text-xs font-bold text-white flex items-center gap-1 shadow-md shadow-blue-600/20">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          종목 추가
+        </button>
+        <button onclick="openModal('settingsModal')" class="p-2 rounded-xl bg-gym-surface hover:bg-slate-700 border border-gym-border text-slate-300 transition" title="설정 및 백업">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="max-w-2xl mx-auto mt-3 grid grid-cols-5 gap-1.5 bg-gym-card p-1 rounded-2xl border border-gym-border">
+      <button onclick="switchTab('mon')" id="tab-mon" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold transition flex flex-col items-center">
+        <span>월요일</span>
+        <span class="text-[10px] opacity-75 font-normal">가슴·삼두</span>
+      </button>
+      <button onclick="switchTab('tue')" id="tab-tue" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold transition flex flex-col items-center">
+        <span>화요일</span>
+        <span class="text-[10px] opacity-75 font-normal">하체·어깨</span>
+      </button>
+      <button onclick="switchTab('thu')" id="tab-thu" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold transition flex flex-col items-center">
+        <span>목요일</span>
+        <span class="text-[10px] opacity-75 font-normal">등·이두</span>
+      </button>
+      <button onclick="switchTab('fri')" id="tab-fri" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold transition flex flex-col items-center">
+        <span>금요일</span>
+        <span class="text-[10px] opacity-75 font-normal">상부·보조</span>
+      </button>
+      <button onclick="switchTab('history')" id="tab-history" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold transition flex flex-col items-center">
+        <span>기록/통계</span>
+        <span class="text-[10px] opacity-75 font-normal">볼륨추이</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- Toast Notification Banner -->
+  <div id="toast" class="fixed top-28 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-all duration-300 transform -translate-y-2">
+    <div id="toastContent" class="px-4 py-2.5 rounded-2xl bg-emerald-500 text-slate-950 font-bold text-xs shadow-xl flex items-center gap-2">
+      <span>알림 메시지</span>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-2xl w-full mx-auto px-4 pt-4">
+    <!-- Workout View -->
+    <div id="workoutView" class="space-y-4">
+      <!-- Day Summary Banner -->
+      <div class="bg-gym-card border border-gym-border rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 id="dayTitle" class="text-lg font-extrabold text-white">월요일 루틴</h2>
+            <span id="readyCountBadge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">증량 가능 0종목</span>
+          </div>
+          <p id="daySubtitle" class="text-xs text-slate-400 mt-0.5">메인 다관절 8~10회 달성 시 증량 · 휴식 2분</p>
+        </div>
+        <div class="text-right">
+          <div class="text-[11px] text-slate-400">오늘 예상 총 볼륨</div>
+          <div id="dayTotalVolume" class="text-base font-extrabold text-blue-400">0 kg</div>
+        </div>
+      </div>
+
+      <!-- Exercise Cards List -->
+      <div id="exerciseList" class="space-y-3.5"></div>
+
+      <!-- Fixed 20-Min Cardio Card -->
+      <div id="cardioCard" class="bg-gym-card border border-gym-border rounded-2xl p-4 transition-all">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <button onclick="toggleCardio()" id="cardioCheckBtn" class="w-7 h-7 rounded-xl border-2 border-slate-600 flex items-center justify-center transition">
+              <svg id="cardioCheckIcon" class="w-4 h-4 text-slate-950 hidden" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            </button>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-white">중강도 유산소 20분 고정</span>
+                <span class="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 text-[10px] font-bold">체지방 10% 루틴</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">인클라인 트레드밀 (경사 8~12 / 속도 4.5~5.5) 또는 천국의 계단 (120~140bpm)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Complete Workout Session Button -->
+      <div class="pt-2 pb-4">
+        <button onclick="saveWorkoutSession()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-500 hover:to-emerald-400 active:scale-[0.99] transition text-sm font-extrabold text-white shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          오늘 운동 완료 및 기록 저장하기
+        </button>
+      </div>
+    </div>
+
+    <!-- History & Analytics View -->
+    <div id="historyView" class="hidden space-y-4">
+      <div class="bg-gym-card border border-gym-border rounded-2xl p-4">
+        <h2 class="text-base font-extrabold text-white mb-1">운동 수행 기록 & 중량 변화</h2>
+        <p class="text-xs text-slate-400">저장된 세션의 총 볼륨(톤수)과 종목별 성장 기록을 확인하세요.</p>
+        
+        <div class="grid grid-cols-3 gap-2.5 mt-4">
+          <div class="bg-gym-surface rounded-xl p-3 border border-gym-border">
+            <div class="text-[11px] text-slate-400">누적 운동 세션</div>
+            <div id="statTotalSessions" class="text-lg font-extrabold text-white mt-0.5">0회</div>
+          </div>
+          <div class="bg-gym-surface rounded-xl p-3 border border-gym-border">
+            <div class="text-[11px] text-slate-400">유산소 20분 달성</div>
+            <div id="statTotalCardio" class="text-lg font-extrabold text-emerald-400 mt-0.5">0회</div>
+          </div>
+          <div class="bg-gym-surface rounded-xl p-3 border border-gym-border">
+            <div class="text-[11px] text-slate-400">최근 세션 볼륨</div>
+            <div id="statLastVolume" class="text-lg font-extrabold text-blue-400 mt-0.5">0 kg</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current Weights Summary Board -->
+      <div class="bg-gym-card border border-gym-border rounded-2xl p-4">
+        <h3 class="text-sm font-bold text-white mb-3">현재 루틴별 세팅 중량 & 다음 목표 한눈에 보기</h3>
+        <div id="overviewBoard" class="space-y-2"></div>
+      </div>
+
+      <!-- Session Logs List -->
+      <div class="space-y-2.5">
+        <div class="flex items-center justify-between px-1">
+          <h3 class="text-sm font-bold text-slate-300">최근 완료된 운동 일지</h3>
+          <button onclick="clearHistoryLogs()" class="text-xs text-rose-400 hover:underline">일지 전체 삭제</button>
+        </div>
+        <div id="historyList" class="space-y-2.5"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Fixed Bottom Rest Timer Bar -->
+  <div class="fixed bottom-0 inset-x-0 z-30 bg-gym-card/95 backdrop-blur-md border-t border-gym-border px-4 py-2.5 shadow-2xl">
+    <div class="max-w-2xl mx-auto flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div id="timerDisplay" class="font-mono text-2xl font-extrabold text-white tracking-wider w-20 text-center bg-gym-surface py-1 rounded-xl border border-gym-border">
+          02:00
+        </div>
+        <div>
+          <div id="timerStatusText" class="text-xs font-bold text-slate-300">세트 간 휴식 타이머</div>
+          <div class="text-[10px] text-slate-400">메인 2분 · 고립/플라이 1분 권장</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button onclick="startRestTimer(60)" class="px-2.5 py-2 rounded-xl bg-gym-surface hover:bg-slate-700 border border-gym-border text-xs font-bold text-slate-200 transition">
+          1분
+        </button>
+        <button onclick="startRestTimer(120)" class="px-2.5 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-xs font-bold text-blue-400 transition">
+          2분
+        </button>
+        <button onclick="toggleTimerPause()" id="timerPauseBtn" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition">
+          시작
+        </button>
+        <button onclick="resetRestTimer()" class="p-2 rounded-xl bg-gym-surface hover:bg-slate-700 border border-gym-border text-slate-400 transition" title="초기화">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / Edit Exercise Modal -->
+  <div id="exerciseModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-gym-card border border-gym-border rounded-3xl max-w-md w-full p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="modalTitle" class="text-base font-extrabold text-white">새 운동 종목 추가</h3>
+        <button onclick="closeModal('exerciseModal')" class="p-1.5 rounded-xl bg-gym-surface text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form id="exerciseForm" onsubmit="handleSaveExercise(event)" class="space-y-3.5">
+        <input type="hidden" id="editExId" />
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1">운동 종목명</label>
+          <input type="text" id="exName" required placeholder="예: 벤치프레스, 인클라인 스미스 프레스" class="w-full px-3.5 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">요일 선택</label>
+            <select id="exDay" class="w-full px-3 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500">
+              <option value="mon">월요일 (가슴·삼두)</option>
+              <option value="tue">화요일 (하체·어깨)</option>
+              <option value="thu">목요일 (등·이두)</option>
+              <option value="fri">금요일 (상부·보조)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">종목 유형 (자동 세팅)</label>
+            <select id="exType" onchange="applyPresetByType()" class="w-full px-3 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500">
+              <option value="compound">다관절 메인 (8~10회)</option>
+              <option value="upper">상부·이두 보조 (10~12회)</option>
+              <option value="isolation">고립·플라이·팔 (12~15회)</option>
+              <option value="assist">어시스트 머신 (보조 감량)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label id="weightLabel" class="block text-xs font-bold text-slate-300 mb-1">현재 무게 (kg)</label>
+            <input type="number" step="0.5" id="exWeight" required value="20" class="w-full px-3.5 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label id="stepLabel" class="block text-xs font-bold text-slate-300 mb-1">증량 단위 (+kg)</label>
+            <input type="number" step="0.5" id="exStep" required value="2.5" class="w-full px-3.5 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">세트 수</label>
+            <input type="number" min="1" max="10" id="exSets" required value="3" class="w-full px-3 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">목표 하한(회)</label>
+            <input type="number" min="1" max="30" id="exMinReps" required value="8" class="w-full px-3 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">목표 상한(회)</label>
+            <input type="number" min="1" max="50" id="exMaxReps" required value="10" class="w-full px-3 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">휴식 시간 (초)</label>
+            <select id="exRest" class="w-full px-3 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500">
+              <option value="60">60초 (1분)</option>
+              <option value="90">90초 (1분 30초)</option>
+              <option value="120" selected>120초 (2분 권장)</option>
+              <option value="150">150초 (2분 30초)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-300 mb-1">메모 / 팁</label>
+            <input type="text" id="exNote" placeholder="예: 쇄골 아래 3cm 타격" class="w-full px-3 py-2.5 rounded-xl bg-gym-surface border border-gym-border text-sm text-white focus:outline-none focus:border-blue-500" />
+          </div>
+        </div>
+
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="closeModal('exerciseModal')" class="flex-1 py-3 rounded-xl bg-gym-surface hover:bg-slate-700 text-xs font-bold text-slate-300">취소</button>
+          <button type="submit" class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white shadow-lg shadow-blue-600/20">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Settings & Backup Modal -->
+  <div id="settingsModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-gym-card border border-gym-border rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-extrabold text-white">데이터 관리 및 루틴 초기화</h3>
+        <button onclick="closeModal('settingsModal')" class="p-1.5 rounded-xl bg-gym-surface text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400 leading-relaxed">
+        모든 운동 중량과 세트 기록은 브라우저에 자동 저장됩니다. 기기를 변경하거나 데이터를 백업하려면 아래 기능을 사용하세요.
+      </p>
+
+      <div class="space-y-2.5">
+        <button onclick="exportDataJSON()" class="w-full py-3 px-4 rounded-xl bg-gym-surface hover:bg-slate-700 border border-gym-border text-xs font-bold text-white flex items-center justify-between">
+          <span>데이터 JSON 클립보드 복사 (백업)</span>
+          <span class="text-blue-400">복사하기 →</span>
+        </button>
+
+        <div class="bg-gym-surface p-3 rounded-xl border border-gym-border space-y-2">
+          <label class="block text-xs font-bold text-slate-300">백업 데이터 붙여넣기 복원</label>
+          <textarea id="importJsonInput" rows="2" placeholder='{"exercises": ...}' class="w-full p-2 rounded-lg bg-gym-bg border border-gym-border text-xs text-slate-300 focus:outline-none"></textarea>
+          <button onclick="importDataJSON()" class="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white">데이터 불러오기</button>
+        </div>
+
+        <button onclick="resetToDefaultRoutine()" class="w-full py-3 px-4 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-bold text-rose-400 flex items-center justify-between">
+          <span>기본 4분할 루틴 초기값으로 되돌리기</span>
+          <span>초기화</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. Default Pre-loaded 4-Day Routine Data
+    // ==========================================
+    const DEFAULT_EXERCISES = [
+      // 월요일 (가슴·삼두)
+      {
+        id: 'mon-1',
+        day: 'mon',
+        name: '벤치프레스 (바벨)',
+        type: 'compound',
+        weight: 60,
+        step: 2.5,
+        sets: 4,
+        minReps: 8,
+        maxReps: 10,
+        rest: 120,
+        note: '현재 5-7-7-5 기준 · 첫 2세트 10회 달성 시 62.5kg 증량',
+        setLogs: [
+          { reps: 5, done: false },
+          { reps: 7, done: false },
+          { reps: 7, done: false },
+          { reps: 5, done: false }
+        ]
+      },
+      {
+        id: 'mon-2',
+        day: 'mon',
+        name: '가슴 프레스 보조 (머신/인클라인)',
+        type: 'compound',
+        weight: 30,
+        step: 2.5,
+        sets: 3,
+        minReps: 8,
+        maxReps: 10,
+        rest: 120,
+        note: '전면 삼각근 개입 줄이고 가슴 텐션 유지',
+        setLogs: [
+          { reps: 9, done: false },
+          { reps: 8, done: false },
+          { reps: 8, done: false }
+        ]
+      },
+      {
+        id: 'mon-3',
+        day: 'mon',
+        name: '가슴 플라이 (펙덱/케이블)',
+        type: 'isolation',
+        weight: 25,
+        step: 2.5,
+        sets: 3,
+        minReps: 12,
+        maxReps: 15,
+        rest: 60,
+        note: '수축 지점 1초 정지 후 쥐어짜기',
+        setLogs: [
+          { reps: 13, done: false },
+          { reps: 12, done: false },
+          { reps: 12, done: false }
+        ]
+      },
+      {
+        id: 'mon-4',
+        day: 'mon',
+        name: '삼두 푸쉬다운 & 복근 마무리',
+        type: 'isolation',
+        weight: 20,
+        step: 2.5,
+        sets: 3,
+        minReps: 12,
+        maxReps: 15,
+        rest: 60,
+        note: '케이블 프레스다운 + 행잉 레그레이즈',
+        setLogs: [
+          { reps: 14, done: false },
+          { reps: 13, done: false },
+          { reps: 12, done: false }
+        ]
+      },
+
+      // 화요일 (하체·어깨)
+      {
+        id: 'tue-1',
+        day: 'tue',
+        name: '스미스 머신 스쿼트',
+        type: 'compound',
+        weight: 40,
+        step: 5,
+        sets: 4,
+        minReps: 8,
+        maxReps: 10,
+        rest: 120,
+        note: '코어 복압 유지 · 10회 달성 시 +5kg 증량',
+        setLogs: [
+          { reps: 9, done: false },
+          { reps: 9, done: false },
+          { reps: 8, done: false },
+          { reps: 8, done: false }
+        ]
+      },
+      {
+        id: 'tue-2',
+        day: 'tue',
+        name: '루마니안 데드리프트',
+        type: 'compound',
+        weight: 50,
+        step: 5,
+        sets: 3,
+        minReps: 8,
+        maxReps: 10,
+        rest: 120,
+        note: '햄스트링 신장성 긴장 유지 · 허리 중립',
+        setLogs: [
+          { reps: 9, done: false },
+          { reps: 8, done: false },
+          { reps: 8, done: false }
+        ]
+      },
+      {
+        id: 'tue-3',
+        day: 'tue',
+        name: '숄더프레스 머신',
+        type: 'compound',
+        weight: 25,
+        step: 2.5,
+        sets: 3,
+        minReps: 8,
+        maxReps: 10,
+        rest: 120,
+        note: '승모근 개입 최소화, 어깨 측면·전면 집중',
+        setLogs: [
+          { reps: 9, done: false },
+          { reps: 9, done: false },
+          { reps: 8, done: false }
+        ]
+      },
+      {
+        id: 'tue-4',
+        day: 'tue',
+        name: '사이드 레터럴 레이즈',
+        type: 'isolation',
+        weight: 6,
+        step: 1,
+        sets: 4,
+        minReps: 12,
+        maxReps: 15,
+        rest: 60,
+        note: '상체 프레임 너비 핵심 · 15회 달성 시 7kg 증량',
+        setLogs: [
+          { reps: 14, done: false },
+          { reps: 13, done: false },
+          { reps: 12, done: false },
+          { reps: 12, done: false }
+        ]
+      },
+
+      // 목요일 (등·이두)
+      {
+        id: 'thu-1',
+        day: 'thu',
+        name: '맨몸 풀업 (메인)',
+        type: 'compound',
+        weight: 0,
+        step: 2.5,
+        sets: 3,
+        minReps: 8,
+        maxReps: 10,
+        rest: 120,
+        note: '현재 3회 기준 · 매주 총 횟수 1~2개씩 누적 증량',
+        setLogs: [
+          { reps: 3, done: false },
+          { reps: 3, done: false },
+          { reps: 3, done: false }
+        ]
+      },
+      {
+        id: 'thu-2',
+        day: 'thu',
+        name: '어시스트 풀업 머신 (백오프)',
+        type: 'assist',
+        weight: 35,
+        step: 5,
+        sets: 3,
+        minReps: 8,
+        maxReps: 10,
+        rest: 120,
+        note: '보조 35~40kg 세팅 · 10회 달성 시 보조 무게 -5kg 감소!',
+        setLogs: [
+          { reps: 8, done: false },
+          { reps: 8, done: false },
+          { reps: 7, done: false }
+        ]
+      },
+      {
+        id: 'thu-3',
+        day: 'thu',
+        name: '시티드 로우 / 바벨 로우',
+        type: 'compound',
+        weight: 35,
+        step: 2.5,
+        sets: 3,
+        minReps: 8,
+        maxReps: 10,
+        rest: 120,
+        note: '팔꿈치를 골반 쪽으로 당겨 등 중앙 두께감 타격',
+        setLogs: [
+          { reps: 9, done: false },
+          { reps: 9, done: false },
+          { reps: 8, done: false }
+        ]
+      },
+      {
+        id: 'thu-4',
+        day: 'thu',
+        name: '이지바 바벨컬',
+        type: 'upper',
+        weight: 25,
+        step: 2.5,
+        sets: 3,
+        minReps: 10,
+        maxReps: 12,
+        rest: 90,
+        note: '전완 피로 누적 시 20kg으로 낮춰 정자세 자극 우선',
+        setLogs: [
+          { reps: 10, done: false },
+          { reps: 9, done: false },
+          { reps: 8, done: false }
+        ]
+      },
+
+      // 금요일 (가슴 상부·등 보조)
+      {
+        id: 'fri-1',
+        day: 'fri',
+        name: '덤벨 벤치프레스',
+        type: 'compound',
+        weight: 14,
+        step: 2,
+        sets: 4,
+        minReps: 8,
+        maxReps: 10,
+        rest: 120,
+        note: '14kg(한손) 10~12회 여유 확보 후 16kg 증량',
+        setLogs: [
+          { reps: 10, done: false },
+          { reps: 10, done: false },
+          { reps: 9, done: false },
+          { reps: 8, done: false }
+        ]
+      },
+      {
+        id: 'fri-2',
+        day: 'fri',
+        name: '인클라인 스미스 프레스',
+        type: 'upper',
+        weight: 20,
+        step: 2.5,
+        sets: 3,
+        minReps: 10,
+        maxReps: 12,
+        rest: 120,
+        note: '벤치 30도, 팔꿈치 30~45도, 쇄골 아래 3~5cm 타격',
+        setLogs: [
+          { reps: 10, done: false },
+          { reps: 10, done: false },
+          { reps: 9, done: false }
+        ]
+      },
+      {
+        id: 'fri-3',
+        day: 'fri',
+        name: '로우 케이블 플라이',
+        type: 'isolation',
+        weight: 5,
+        step: 2.5,
+        sets: 2,
+        minReps: 12,
+        maxReps: 15,
+        rest: 60,
+        note: '최하단 도르래 · 턱 높이까지 대각선 수축 후 1초 정지',
+        setLogs: [
+          { reps: 14, done: false },
+          { reps: 13, done: false }
+        ]
+      },
+      {
+        id: 'fri-4',
+        day: 'fri',
+        name: '등·후면 보조 마무리 (랫풀다운/로우)',
+        type: 'upper',
+        weight: 35,
+        step: 5,
+        sets: 3,
+        minReps: 10,
+        maxReps: 12,
+        rest: 90,
+        note: '주간 등 볼륨 보완 · 깔끔한 수축·이완 템포 유지',
+        setLogs: [
+          { reps: 11, done: false },
+          { reps: 10, done: false },
+          { reps: 10, done: false }
+        ]
+      }
+    ];
+
+    const DAY_INFO = {
+      mon: { title: '월요일 · 가슴 / 삼두 / 유산소', subtitle: '메인 프레스 8~10회 증량 · 휴식 2분 · 유산소 20분' },
+      tue: { title: '화요일 · 하체 / 어깨 / 유산소', subtitle: '스쿼트·데드 8~10회 · 사레레 12~15회 · 유산소 20분' },
+      thu: { title: '목요일 · 등 / 이두 / 유산소', subtitle: '맨몸 풀업 누적 + 어시스트 보조 감량 · 유산소 20분' },
+      fri: { title: '금요일 · 가슴 상부 / 등 보조 / 유산소', subtitle: '윗가슴 안쪽 타격(인클라인·로우플라이) · 유산소 20분' }
+    };
+
+    // ==========================================
+    // 2. State Management & LocalStorage
+    // ==========================================
+    let state = {
+      activeTab: 'mon',
+      exercises: [],
+      cardioDone: { mon: false, tue: false, thu: false, fri: false },
+      history: []
+    };
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('proload_tracker_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          state.exercises = parsed.exercises || JSON.parse(JSON.stringify(DEFAULT_EXERCISES));
+          state.cardioDone = parsed.cardioDone || { mon: false, tue: false, thu: false, fri: false };
+          state.history = parsed.history || [];
+        } else {
+          state.exercises = JSON.parse(JSON.stringify(DEFAULT_EXERCISES));
+          saveState();
+        }
+      } catch (e) {
+        console.error('Failed to load state:', e);
+        state.exercises = JSON.parse(JSON.stringify(DEFAULT_EXERCISES));
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('proload_tracker_v1', JSON.stringify({
+          exercises: state.exercises,
+          cardioDone: state.cardioDone,
+          history: state.history
+        }));
+      } catch (e) {
+        console.error('Failed to save state:', e);
+      }
+    }
+
+    // ==========================================
+    // 3. Double Progression Analysis Engine
+    // ==========================================
+    function analyzeProgression(ex) {
+      const logs = ex.setLogs || [];
+      const totalSets = logs.length;
+      if (totalSets === 0) {
+        return {
+          status: 'building',
+          badge: '기록 대기',
+          message: `목표 횟수 ${ex.minReps}~${ex.maxReps}회를 채워보세요.`,
+          readyToLevelUp: false,
+          nextWeight: ex.weight
+        };
+      }
+
+      const topTwoCount = Math.min(2, totalSets);
+      const topSets = logs.slice(0, topTwoCount);
+      const hitMaxOnTopSets = topSets.every(s => Number(s.reps) >= ex.maxReps);
+      const avgReps = logs.reduce((acc, s) => acc + Number(s.reps), 0) / totalSets;
+      const isAssist = ex.type === 'assist';
+
+      let nextWeight = isAssist
+        ? Math.max(0, Number((ex.weight - ex.step).toFixed(1)))
+        : Number((ex.weight + ex.step).toFixed(1));
+
+      if (hitMaxOnTopSets) {
+        const actionText = isAssist
+          ? `보조 무게를 ${ex.weight}kg → ${nextWeight}kg(-${ex.step}kg)으로 줄이고`
+          : ex.weight === 0
+            ? `중량 벨트 +${ex.step}kg 추가(또는 세트당 횟수 확장) 후`
+            : `무게를 ${ex.weight}kg → ${nextWeight}kg(+${ex.step}kg)으로 올리고`;
+
+        return {
+          status: 'ready',
+          badge: '🔥 증량 타이밍 달성!',
+          message: `첫 ${topTwoCount}세트에서 목표 상한(${ex.maxReps}회)을 달성했습니다! 다음 세션엔 ${actionText} ${ex.minReps}회부터 다시 쌓아가세요.`,
+          readyToLevelUp: true,
+          nextWeight
+        };
+      }
+
+      if (avgReps >= ex.minReps) {
+        const currentPattern = logs.map(s => s.reps).join('-');
+        return {
+          status: 'progressing',
+          badge: '📈 횟수 누적 중',
+          message: `목표 범위(${ex.minReps}~${ex.maxReps}회) 안에서 잘 성장 중입니다. 현재(${currentPattern})보다 총 1~2회만 더 채워 첫 2세트를 ${ex.maxReps}회로 만드세요.`,
+          readyToLevelUp: false,
+          nextWeight
+        };
+      }
+
+      return {
+        status: 'adapting',
+        badge: '💪 중량 적응 단계',
+        message: `현재 무게(${isAssist ? '보조 ' : ''}${ex.weight}kg)를 유지하면서 매주 1~2개씩 횟수를 늘려 전 세트 ${ex.minReps}회 안착을 먼저 목표로 하세요.`,
+        readyToLevelUp: false,
+        nextWeight
+      };
+    }
+
+    // ==========================================
+    // 4. UI Rendering Functions
+    // ==========================================
+    function switchTab(tab) {
+      state.activeTab = tab;
+
+      // Update Tab Styles
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
+        btn.classList.add('text-slate-400', 'hover:text-slate-200');
+      });
+      const activeBtn = document.getElementById(`tab-${tab}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-400', 'hover:text-slate-200');
+        activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-md');
+      }
+
+      if (tab === 'history') {
+        document.getElementById('workoutView').classList.add('hidden');
+        document.getElementById('historyView').classList.remove('hidden');
+        renderHistoryView();
+      } else {
+        document.getElementById('historyView').classList.add('hidden');
+        document.getElementById('workoutView').classList.remove('hidden');
+        renderWorkoutDay(tab);
+      }
+    }
+
+    function renderWorkoutDay(day) {
+      const info = DAY_INFO[day];
+      document.getElementById('dayTitle').textContent = info.title;
+      document.getElementById('daySubtitle').textContent = info.subtitle;
+
+      const dayExercises = state.exercises.filter(e => e.day === day);
+      const listEl = document.getElementById('exerciseList');
+      listEl.innerHTML = '';
+
+      let readyCount = 0;
+      let totalVolume = 0;
+
+      dayExercises.forEach(ex => {
+        const analysis = analyzeProgression(ex);
+        if (analysis.readyToLevelUp) readyCount++;
+
+        const effectiveWeight = ex.type === 'assist'
+          ? Math.max(10, 71 - ex.weight)
+          : (ex.weight === 0 ? 71 : ex.weight);
+        const exReps = ex.setLogs.reduce((sum, s) => sum + Number(s.reps || 0), 0);
+        totalVolume += Math.round(effectiveWeight * exReps);
+
+        const isReady = analysis.status === 'ready';
+        const isProgressing = analysis.status === 'progressing';
+
+        const cardBorderClass = isReady
+          ? 'border-emerald-500/60 shadow-lg shadow-emerald-500/10'
+          : 'border-gym-border';
+
+        const badgeClass = isReady
+          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+          : isProgressing
+            ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+            : 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+
+        const guideBoxClass = isReady
+          ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-200'
+          : isProgressing
+            ? 'bg-blue-950/30 border-blue-500/25 text-slate-200'
+            : 'bg-gym-surface/80 border-gym-border text-slate-300';
+
+        const weightDisplay = ex.type === 'assist'
+          ? `보조 ${ex.weight}kg`
+          : ex.weight === 0
+            ? '맨몸 (0kg)'
+            : `${ex.weight}kg`;
+
+        const card = document.createElement('div');
+        card.className = `bg-gym-card border ${cardBorderClass} rounded-2xl p-4 transition-all`;
+
+        card.innerHTML = `
+          <!-- Card Header -->
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-base font-extrabold text-white">${ex.name}</h3>
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${badgeClass}">
+                  ${analysis.badge}
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">
+                목표: <strong class="text-slate-200">${ex.sets}세트 × ${ex.minReps}~${ex.maxReps}회</strong>
+                <span class="mx-1.5 text-slate-600">|</span>
+                휴식 <span class="text-blue-400 font-semibold">${ex.rest >= 60 ? (ex.rest/60) + '분' : ex.rest + '초'}</span>
+              </p>
+            </div>
+
+            <!-- Action Buttons (Edit / Delete) -->
+            <div class="flex items-center gap-1">
+              <button onclick="openEditExercise('${ex.id}')" class="p-1.5 rounded-lg bg-gym-surface hover:bg-slate-700 text-slate-400 hover:text-white transition" title="종목 수정">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+              </button>
+              <button onclick="deleteExercise('${ex.id}')" class="p-1.5 rounded-lg bg-gym-surface hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition" title="종목 삭제">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Weight Adjuster Bar -->
+          <div class="mt-3 flex items-center justify-between bg-gym-surface rounded-xl px-3 py-2 border border-gym-border">
+            <span class="text-xs font-bold text-slate-400">${ex.type === 'assist' ? '현재 보조 무게' : '현재 세팅 중량'}</span>
+            <div class="flex items-center gap-2">
+              <button onclick="adjustWeight('${ex.id}', -${ex.step})" class="w-7 h-7 rounded-lg bg-gym-card hover:bg-slate-700 border border-gym-border text-sm font-bold text-slate-200 flex items-center justify-center active:scale-90">-</button>
+              <span class="text-sm font-extrabold text-white min-w-[78px] text-center">${weightDisplay}</span>
+              <button onclick="adjustWeight('${ex.id}', ${ex.step})" class="w-7 h-7 rounded-lg bg-gym-card hover:bg-slate-700 border border-gym-border text-sm font-bold text-slate-200 flex items-center justify-center active:scale-90">+</button>
+            </div>
+          </div>
+
+          <!-- Sets Grid -->
+          <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            ${ex.setLogs.map((setLog, idx) => `
+              <div class="flex items-center justify-between bg-gym-bg/80 border ${setLog.done ? 'border-emerald-500/50 bg-emerald-950/20' : 'border-gym-border'} rounded-xl px-2.5 py-2">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="toggleSetDone('${ex.id}', ${idx}, ${ex.rest})" class="w-5 h-5 rounded-md border ${setLog.done ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-600 text-transparent'} flex items-center justify-center transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                  </button>
+                  <span class="text-xs font-bold ${setLog.done ? 'text-emerald-400' : 'text-slate-400'}">${idx + 1}세트</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <input type="number" min="0" max="99" value="${setLog.reps}" onchange="updateSetReps('${ex.id}', ${idx}, this.value)" class="w-10 text-center bg-gym-surface border border-gym-border rounded-lg py-1 text-sm font-extrabold text-white focus:outline-none focus:border-blue-500" />
+                  <span class="text-[11px] text-slate-400">회</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Next Session Prescription Box ("앞으로 어떻게 늘려야 하는지") -->
+          <div class="mt-3 rounded-xl border p-3 ${guideBoxClass}">
+            <div class="flex items-start justify-between gap-2">
+              <div class="text-xs leading-relaxed">
+                <span class="font-extrabold block mb-0.5 ${isReady ? 'text-emerald-400' : 'text-blue-400'}">
+                  🧭 다음 훈련 점진적 과부하 가이드
+                </span>
+                ${analysis.message}
+              </div>
+            </div>
+            ${isReady ? `
+              <button onclick="applyLevelUp('${ex.id}')" class="mt-2.5 w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] transition text-xs font-extrabold text-slate-950 shadow-md flex items-center justify-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+                ${ex.type === 'assist' ? `보조 ${analysis.nextWeight}kg으로 감량 적용 & ${ex.minReps}회 리셋` : `${analysis.nextWeight}kg 증량 적용 & ${ex.minReps}회 리셋`}
+              </button>
+            ` : ''}
+          </div>
+
+          ${ex.note ? `<p class="mt-2 text-[11px] text-slate-400 flex items-center gap-1"><span>💡</span><span>${ex.note}</span></p>` : ''}
+        `;
+
+        listEl.appendChild(card);
+      });
+
+      // Update Day Header Stats
+      document.getElementById('readyCountBadge').textContent = `증량 가능 ${readyCount}종목`;
+      document.getElementById('dayTotalVolume').textContent = `${totalVolume.toLocaleString()} kg`;
+
+      // Update Cardio Toggle UI
+      const isCardioDone = state.cardioDone[day];
+      const cardioCard = document.getElementById('cardioCard');
+      const cardioBtn = document.getElementById('cardioCheckBtn');
+      const cardioIcon = document.getElementById('cardioCheckIcon');
+
+      if (isCardioDone) {
+        cardioCard.classList.add('border-emerald-500/50', 'bg-emerald-950/15');
+        cardioBtn.classList.remove('border-slate-600');
+        cardioBtn.classList.add('bg-emerald-500', 'border-emerald-500');
+        cardioIcon.classList.remove('hidden');
+      } else {
+        cardioCard.classList.remove('border-emerald-500/50', 'bg-emerald-950/15');
+        cardioBtn.classList.add('border-slate-600');
+        cardioBtn.classList.remove('bg-emerald-500', 'border-emerald-500');
+        cardioIcon.classList.add('hidden');
+      }
+    }
+
+    function renderHistoryView() {
+      document.getElementById('statTotalSessions').textContent = `${state.history.length}회`;
+      const cardioCount = state.history.filter(h => h.cardioDone).length;
+      document.getElementById('statTotalCardio').textContent = `${cardioCount}회`;
+      const lastVol = state.history.length > 0 ? state.history[0].totalVolume : 0;
+      document.getElementById('statLastVolume').textContent = `${lastVol.toLocaleString()} kg`;
+
+      // Overview Board
+      const overviewEl = document.getElementById('overviewBoard');
+      const dayLabels = { mon: '월', tue: '화', thu: '목', fri: '금' };
+      overviewEl.innerHTML = state.exercises.map(ex => {
+        const analysis = analyzeProgression(ex);
+        const wText = ex.type === 'assist' ? `보조 ${ex.weight}kg` : `${ex.weight}kg`;
+        const repsStr = ex.setLogs.map(s => s.reps).join('-');
+        return `
+          <div class="flex items-center justify-between bg-gym-surface/70 border border-gym-border rounded-xl px-3 py-2 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="w-5 h-5 rounded-md bg-blue-600/20 text-blue-400 font-bold flex items-center justify-center text-[11px]">${dayLabels[ex.day]}</span>
+              <div>
+                <div class="font-bold text-white">${ex.name}</div>
+                <div class="text-[11px] text-slate-400">${wText} · 최근 [${repsStr}] (목표 ${ex.minReps}~${ex.maxReps}회)</div>
+              </div>
+            </div>
+            <span class="px-2 py-1 rounded-lg text-[10px] font-extrabold ${analysis.readyToLevelUp ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-300'}">
+              ${analysis.readyToLevelUp ? '증량 가능 🔥' : '횟수 누적'}
+            </span>
+          </div>
+        `;
+      }).join('');
+
+      // History Logs
+      const historyListEl = document.getElementById('historyList');
+      if (state.history.length === 0) {
+        historyListEl.innerHTML = `
+          <div class="bg-gym-card border border-gym-border rounded-2xl p-6 text-center text-xs text-slate-400">
+            아직 저장된 운동 완료 일지가 없습니다.<br/>각 요일 탭 하단의 <strong>[오늘 운동 완료 및 기록 저장하기]</strong> 버튼을 눌러보세요!
+          </div>
+        `;
+        return;
+      }
+
+      historyListEl.innerHTML = state.history.map(item => `
+        <div class="bg-gym-card border border-gym-border rounded-2xl p-3.5">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <span class="text-xs font-extrabold text-white">${item.dayTitle}</span>
+              <span class="text-[11px] text-slate-400 ml-2">${item.date}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              ${item.cardioDone ? '<span class="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[10px] font-bold">유산소 20분 ✓</span>' : ''}
+              <span class="text-xs font-extrabold text-blue-400">${item.totalVolume.toLocaleString()} kg</span>
+            </div>
+          </div>
+          <div class="space-y-1 border-t border-gym-border pt-2">
+            ${item.exercises.map(e => `
+              <div class="flex justify-between text-[11px] text-slate-300">
+                <span>${e.name}</span>
+                <span class="font-mono text-slate-400">${e.weightText} · ${e.repsPattern}회</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ==========================================
+    // 5. Interactive Handlers (Sets, Weight, Level-up)
+    // ==========================================
+    function adjustWeight(id, delta) {
+      const ex = state.exercises.find(e => e.id === id);
+      if (!ex) return;
+      ex.weight = Math.max(0, Number((ex.weight + delta).toFixed(1)));
+      saveState();
+      renderWorkoutDay(state.activeTab);
+    }
+
+    function updateSetReps(id, setIdx, val) {
+      const ex = state.exercises.find(e => e.id === id);
+      if (!ex || !ex.setLogs[setIdx]) return;
+      const num = Math.max(0, Math.min(99, parseInt(val, 10) || 0));
+      ex.setLogs[setIdx].reps = num;
+      saveState();
+      renderWorkoutDay(state.activeTab);
+    }
+
+    function toggleSetDone(id, setIdx, restSec) {
+      const ex = state.exercises.find(e => e.id === id);
+      if (!ex || !ex.setLogs[setIdx]) return;
+      ex.setLogs[setIdx].done = !ex.setLogs[setIdx].done;
+      saveState();
+      renderWorkoutDay(state.activeTab);
+
+      if (ex.setLogs[setIdx].done) {
+        startRestTimer(restSec || 120);
+        showToast(`${setIdx + 1}세트 완료! 휴식 타이머(${restSec >= 60 ? (restSec/60)+'분' : restSec+'초'}) 시작`);
+      }
+    }
+
+    function applyLevelUp(id) {
+      const ex = state.exercises.find(e => e.id === id);
+      if (!ex) return;
+      const analysis = analyzeProgression(ex);
+      ex.weight = analysis.nextWeight;
+      ex.setLogs = ex.setLogs.map(() => ({ reps: ex.minReps, done: false }));
+      saveState();
+      renderWorkoutDay(state.activeTab);
+
+      const msg = ex.type === 'assist'
+        ? `🎉 ${ex.name} 보조 무게를 ${ex.weight}kg으로 줄이고 ${ex.minReps}회로 세팅했습니다!`
+        : `🔥 ${ex.name} 무게를 ${ex.weight}kg으로 증량하고 ${ex.minReps}회로 세팅했습니다!`;
+      showToast(msg);
+    }
+
+    function toggleCardio() {
+      const day = state.activeTab;
+      state.cardioDone[day] = !state.cardioDone[day];
+      saveState();
+      renderWorkoutDay(day);
+      if (state.cardioDone[day]) {
+        showToast('중강도 유산소 20분 완료 체크되었습니다!');
+      }
+    }
+
+    function saveWorkoutSession() {
+      const day = state.activeTab;
+      const dayExercises = state.exercises.filter(e => e.day === day);
+      let totalVolume = 0;
+
+      const summaryList = dayExercises.map(ex => {
+        const effectiveWeight = ex.type === 'assist'
+          ? Math.max(10, 71 - ex.weight)
+          : (ex.weight === 0 ? 71 : ex.weight);
+        const totalReps = ex.setLogs.reduce((sum, s) => sum + Number(s.reps || 0), 0);
+        totalVolume += Math.round(effectiveWeight * totalReps);
+
+        return {
+          name: ex.name,
+          weightText: ex.type === 'assist' ? `보조 ${ex.weight}kg` : `${ex.weight}kg`,
+          repsPattern: ex.setLogs.map(s => s.reps).join('-')
+        };
+      });
+
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+
+      state.history.unshift({
+        id: Date.now(),
+        date: dateStr,
+        day,
+        dayTitle: DAY_INFO[day].title.split('·')[0].trim(),
+        totalVolume,
+        cardioDone: state.cardioDone[day],
+        exercises: summaryList
+      });
+
+      // Reset checkmarks for next week while keeping reps & weights
+      dayExercises.forEach(ex => {
+        ex.setLogs.forEach(s => s.done = false);
+      });
+      state.cardioDone[day] = false;
+
+      saveState();
+      renderWorkoutDay(day);
+      showToast('✅ 오늘 운동 기록이 저장되었습니다! (기록/통계 탭에서 확인)');
+    }
+
+    // ==========================================
+    // 6. Add / Edit / Delete Exercise Modal Logic
+    // ==========================================
+    function openModal(id) {
+      if (id === 'exerciseModal') {
+        document.getElementById('modalTitle').textContent = '새 운동 종목 추가';
+        document.getElementById('editExId').value = '';
+        document.getElementById('exerciseForm').reset();
+        document.getElementById('exDay').value = state.activeTab === 'history' ? 'mon' : state.activeTab;
+        applyPresetByType();
+      }
+      const modal = document.getElementById(id);
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function applyPresetByType() {
+      const type = document.getElementById('exType').value;
+      const weightLabel = document.getElementById('weightLabel');
+      const stepLabel = document.getElementById('stepLabel');
+
+      if (type === 'compound') {
+        document.getElementById('exMinReps').value = 8;
+        document.getElementById('exMaxReps').value = 10;
+        document.getElementById('exStep').value = 2.5;
+        document.getElementById('exRest').value = 120;
+        weightLabel.textContent = '현재 무게 (kg)';
+        stepLabel.textContent = '증량 단위 (+kg)';
+      } else if (type === 'upper') {
+        document.getElementById('exMinReps').value = 10;
+        document.getElementById('exMaxReps').value = 12;
+        document.getElementById('exStep').value = 2.5;
+        document.getElementById('exRest').value = 90;
+        weightLabel.textContent = '현재 무게 (kg)';
+        stepLabel.textContent = '증량 단위 (+kg)';
+      } else if (type === 'isolation') {
+        document.getElementById('exMinReps').value = 12;
+        document.getElementById('exMaxReps').value = 15;
+        document.getElementById('exStep').value = 2.5;
+        document.getElementById('exRest').value = 60;
+        weightLabel.textContent = '현재 무게 (kg)';
+        stepLabel.textContent = '증량 단위 (+kg)';
+      } else if (type === 'assist') {
+        document.getElementById('exMinReps').value = 8;
+        document.getElementById('exMaxReps').value = 10;
+        document.getElementById('exStep').value = 5;
+        document.getElementById('exRest').value = 120;
+        weightLabel.textContent = '현재 보조 무게 (kg)';
+        stepLabel.textContent = '보조 감량 단위 (-kg)';
+      }
+    }
+
+    function openEditExercise(id) {
+      const ex = state.exercises.find(e => e.id === id);
+      if (!ex) return;
+
+      document.getElementById('modalTitle').textContent = '운동 종목 수정';
+      document.getElementById('editExId').value = ex.id;
+      document.getElementById('exName').value = ex.name;
+      document.getElementById('exDay').value = ex.day;
+      document.getElementById('exType').value = ex.type;
+      applyPresetByType();
+      document.getElementById('exWeight').value = ex.weight;
+      document.getElementById('exStep').value = ex.step;
+      document.getElementById('exSets').value = ex.sets;
+      document.getElementById('exMinReps').value = ex.minReps;
+      document.getElementById('exMaxReps').value = ex.maxReps;
+      document.getElementById('exRest').value = ex.rest;
+      document.getElementById('exNote').value = ex.note || '';
+
+      const modal = document.getElementById('exerciseModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function handleSaveExercise(e) {
+      e.preventDefault();
+      const editId = document.getElementById('editExId').value;
+      const name = document.getElementById('exName').value.trim();
+      const day = document.getElementById('exDay').value;
+      const type = document.getElementById('exType').value;
+      const weight = parseFloat(document.getElementById('exWeight').value) || 0;
+      const step = parseFloat(document.getElementById('exStep').value) || 2.5;
+      const sets = parseInt(document.getElementById('exSets').value, 10) || 3;
+      const minReps = parseInt(document.getElementById('exMinReps').value, 10) || 8;
+      const maxReps = parseInt(document.getElementById('exMaxReps').value, 10) || 10;
+      const rest = parseInt(document.getElementById('exRest').value, 10) || 120;
+      const note = document.getElementById('exNote').value.trim();
+
+      if (editId) {
+        const ex = state.exercises.find(item => item.id === editId);
+        if (ex) {
+          ex.name = name;
+          ex.day = day;
+          ex.type = type;
+          ex.weight = weight;
+          ex.step = step;
+          ex.sets = sets;
+          ex.minReps = minReps;
+          ex.maxReps = maxReps;
+          ex.rest = rest;
+          ex.note = note;
+
+          // Adjust setLogs length if sets changed
+          if (ex.setLogs.length < sets) {
+            while (ex.setLogs.length < sets) {
+              ex.setLogs.push({ reps: minReps, done: false });
+            }
+          } else if (ex.setLogs.length > sets) {
+            ex.setLogs = ex.setLogs.slice(0, sets);
+          }
+        }
+        showToast('운동 종목이 수정되었습니다.');
+      } else {
+        const setLogs = Array.from({ length: sets }, () => ({ reps: minReps, done: false }));
+        state.exercises.push({
+          id: 'ex-' + Date.now(),
+          day,
+          name,
+          type,
+          weight,
+          step,
+          sets,
+          minReps,
+          maxReps,
+          rest,
+          note,
+          setLogs
+        });
+        showToast('새 운동 종목이 추가되었습니다.');
+      }
+
+      saveState();
+      closeModal('exerciseModal');
+      switchTab(day);
+    }
+
+    function deleteExercise(id) {
+      state.exercises = state.exercises.filter(e => e.id !== id);
+      saveState();
+      renderWorkoutDay(state.activeTab);
+      showToast('운동 종목이 삭제되었습니다.');
+    }
+
+    function clearHistoryLogs() {
+      state.history = [];
+      saveState();
+      renderHistoryView();
+      showToast('저장된 일지가 초기화되었습니다.');
+    }
+
+    // ==========================================
+    // 7. Rest Timer with Tone.js Beep
+    // ==========================================
+    let timerSeconds = 120;
+    let timerInterval = null;
+    let isTimerRunning = false;
+
+    function updateTimerUI() {
+      const mins = Math.floor(timerSeconds / 60);
+      const secs = timerSeconds % 60;
+      const display = document.getElementById('timerDisplay');
+      display.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      if (timerSeconds <= 10 && timerSeconds > 0 && isTimerRunning) {
+        display.classList.add('text-amber-400', 'border-amber-500/50');
+      } else if (timerSeconds === 0) {
+        display.classList.add('text-emerald-400', 'border-emerald-500');
+      } else {
+        display.classList.remove('text-amber-400', 'border-amber-500/50', 'text-emerald-400', 'border-emerald-500');
+      }
+    }
+
+    function playTimerDoneBeep() {
+      try {
+        if (typeof Tone !== 'undefined') {
+          if (Tone.context.state !== 'running') Tone.start();
+          const synth = new Tone.Synth().toDestination();
+          const now = Tone.now();
+          synth.triggerAttackRelease('C5', '16n', now);
+          synth.triggerAttackRelease('E5', '16n', now + 0.15);
+          synth.triggerAttackRelease('G5', '8n', now + 0.3);
+        }
+      } catch (e) {
+        console.warn('Audio cue skipped:', e);
+      }
+    }
+
+    function startRestTimer(seconds) {
+      clearInterval(timerInterval);
+      timerSeconds = seconds;
+      isTimerRunning = true;
+      document.getElementById('timerPauseBtn').textContent = '일시정지';
+      document.getElementById('timerStatusText').textContent = '휴식 진행 중...';
+      updateTimerUI();
+
+      timerInterval = setInterval(() => {
+        if (timerSeconds > 0) {
+          timerSeconds--;
+          updateTimerUI();
+        } else {
+          clearInterval(timerInterval);
+          isTimerRunning = false;
+          document.getElementById('timerPauseBtn').textContent = '시작';
+          document.getElementById('timerStatusText').textContent = '🔥 휴식 완료! 다음 세트 시작!';
+          playTimerDoneBeep();
+          showToast('⏰ 휴식 종료! 다음 세트를 시작하세요!');
+        }
+      }, 1000);
+    }
+
+    function toggleTimerPause() {
+      if (isTimerRunning) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+        document.getElementById('timerPauseBtn').textContent = '계속';
+        document.getElementById('timerStatusText').textContent = '타이머 일시정지';
+      } else {
+        if (timerSeconds === 0) timerSeconds = 120;
+        startRestTimer(timerSeconds);
+      }
+    }
+
+    function resetRestTimer() {
+      clearInterval(timerInterval);
+      isTimerRunning = false;
+      timerSeconds = 120;
+      document.getElementById('timerPauseBtn').textContent = '시작';
+      document.getElementById('timerStatusText').textContent = '세트 간 휴식 타이머';
+      updateTimerUI();
+    }
+
+    // ==========================================
+    // 8. Backup / Restore & Toast Utilities
+    // ==========================================
+    function exportDataJSON() {
+      const jsonStr = JSON.stringify({
+        exercises: state.exercises,
+        cardioDone: state.cardioDone,
+        history: state.history
+      });
+      const tempInput = document.createElement('textarea');
+      tempInput.value = jsonStr;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast('📋 백업 JSON 데이터가 클립보드에 복사되었습니다!');
+    }
+
+    function importDataJSON() {
+      try {
+        const raw = document.getElementById('importJsonInput').value.trim();
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed.exercises)) throw new Error('Invalid format');
+        state.exercises = parsed.exercises;
+        state.cardioDone = parsed.cardioDone || { mon: false, tue: false, thu: false, fri: false };
+        state.history = parsed.history || [];
+        saveState();
+        closeModal('settingsModal');
+        switchTab(state.activeTab);
+        showToast('✅ 백업 데이터가 성공적으로 복원되었습니다!');
+      } catch (e) {
+        showToast('⚠️ 올바른 JSON 백업 형식이 아닙니다.');
+      }
+    }
+
+    function resetToDefaultRoutine() {
+      state.exercises = JSON.parse(JSON.stringify(DEFAULT_EXERCISES));
+      state.cardioDone = { mon: false, tue: false, thu: false, fri: false };
+      saveState();
+      closeModal('settingsModal');
+      switchTab('mon');
+      showToast('🔄 기본 4분할 루틴으로 초기화되었습니다.');
+    }
+
+    let toastTimeout = null;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const content = document.getElementById('toastContent');
+      content.textContent = message;
+      toast.classList.remove('opacity-0', '-translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-2');
+      }, 2800);
+    }
+
+    // Initialize App on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      // Auto-select today's day if Mon/Tue/Thu/Fri
+      const dayMap = { 1: 'mon', 2: 'tue', 4: 'thu', 5: 'fri' };
+      const todayCode = dayMap[new Date().getDay()] || 'mon';
+      switchTab(todayCode);
+      updateTimerUI();
+    });
+  </script>
+</body>
+</html>
