@@ -95,8 +95,11 @@
 
     .card-actions {
       display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
+      max-width: 190px;
       flex-shrink: 0;
     }
 
@@ -396,7 +399,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "progressive_overload_tracker_v11";
+    const STORAGE_KEY = "progressive_overload_tracker_v12";
     const DAYS = ["월", "화", "목", "금"];
     const REP_CHOICES = [8, 10, 12, 15, 20];
     const DAY_NAMES = {
@@ -658,6 +661,21 @@
       render();
     }
 
+    function moveExercise(exId, delta) {
+      const day = state.activeDay;
+      const list = state.routine[day] || [];
+      const idx = list.findIndex(item => item.id === exId);
+      if (idx === -1) return;
+
+      const targetIdx = idx + delta;
+      if (targetIdx < 0 || targetIdx >= list.length) return;
+
+      const [moved] = list.splice(idx, 1);
+      list.splice(targetIdx, 0, moved);
+      saveState();
+      render();
+    }
+
     function calcTotalVolume(day) {
       const list = state.routine[day] || [];
       let checkedVolume = 0;
@@ -805,7 +823,7 @@
     }
 
     function resetDefaults() {
-      if (!confirm("종목, 체형/유산소 설정, 기록을 초기값으로 되돌릴까요?")) return;
+      if (!confirm("종목, 순서, 세트 수, 체형/유산소 설정, 기록을 초기값으로 되돌릴까요?")) return;
       localStorage.removeItem(STORAGE_KEY);
       state = loadState();
       render();
@@ -969,12 +987,14 @@
       ` : "";
 
       const list = state.routine[day] || [];
-      const cardsHtml = list.map(ex => {
+      const cardsHtml = list.map((ex, exIdx) => {
         const rows = getExerciseLogs(day, ex);
         const guide = evaluateOverload(ex, rows);
         const typeLabel = ex.type === "compound" ? "다관절" : "고립";
         const canDecrease = rows.length > 1;
         const canIncrease = rows.length < 8;
+        const canMoveUp = exIdx > 0;
+        const canMoveDown = exIdx < list.length - 1;
 
         const setRowsHtml = rows.map((r, i) => {
           const chipsHtml = REP_CHOICES.map(n =>
@@ -1012,6 +1032,8 @@
                 </div>
               </div>
               <div class="card-actions">
+                <button class="btn btn-sm" onclick="moveExercise('${ex.id}', -1)" ${canMoveUp ? "" : "disabled style='opacity:0.4; cursor:not-allowed;'"} title="위로 이동">▲</button>
+                <button class="btn btn-sm" onclick="moveExercise('${ex.id}', 1)" ${canMoveDown ? "" : "disabled style='opacity:0.4; cursor:not-allowed;'"} title="아래로 이동">▼</button>
                 <button class="btn btn-sm" onclick="changeExerciseSets('${ex.id}', -1)" ${canDecrease ? "" : "disabled style='opacity:0.4; cursor:not-allowed;'"}>- 세트</button>
                 <button class="btn btn-sm" onclick="changeExerciseSets('${ex.id}', 1)" ${canIncrease ? "" : "disabled style='opacity:0.4; cursor:not-allowed;'"}>+ 세트</button>
                 <button class="btn btn-danger" onclick="removeExercise('${ex.id}')">삭제</button>
