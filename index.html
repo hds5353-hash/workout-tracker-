@@ -531,20 +531,19 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
 
-    function switchDay(d) {
+        function switchDay(d) {
       state.activeDay = d;
-      const preset = DAY_CARDIO_PRESETS[d];
-      if (preset) {
+      if (!state.cardio) {
         state.cardio = {
-          ...preset,
-          inclinePct: state.customIncline ? state.cardio.inclinePct : preset.inclinePct,
-          liftingMinutes: state.cardio.liftingMinutes ?? 35
+          ...(DAY_CARDIO_PRESETS[d] || DAY_CARDIO_PRESETS["월"]),
+          liftingMinutes: 35
         };
       }
       saveState();
       render();
     }
 
+    
     function togglePanel() {
       state.showPanel = !state.showPanel;
       saveState();
@@ -558,7 +557,14 @@
       updateStatsOnly();
     }
 
+
     function updateCardio(field, val) {
+      if (!state.cardio) {
+        state.cardio = {
+          ...DAY_CARDIO_PRESETS[state.activeDay || "월"],
+          liftingMinutes: 35
+        };
+      }
       if (field === "mode") {
         state.cardio.mode = val;
         saveState();
@@ -568,9 +574,7 @@
       const parsed = parseFloat(val);
       const nextVal = Number.isNaN(parsed) ? 0 : Math.max(0, parsed);
       state.cardio[field] = nextVal;
-      if (field === "inclinePct") {
-        state.customIncline = true;
-      }
+      state.customCardio = true;
       saveState();
       updateStatsOnly();
     }
