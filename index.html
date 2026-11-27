@@ -399,7 +399,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "progressive_overload_tracker_v13";
+    const STORAGE_KEY = "progressive_overload_tracker_v14";
     const DAYS = ["월", "화", "목", "금"];
     const REP_CHOICES = [8, 10, 12, 15, 20];
     const DAY_NAMES = {
@@ -500,20 +500,27 @@
       ]
     };
 
+    function buildDefaultCardioByDay(liftingMinutes = 35) {
+      const obj = {};
+      for (const d of DAYS) {
+        obj[d] = {
+          ...(DAY_CARDIO_PRESETS[d] || DAY_CARDIO_PRESETS["월"]),
+          liftingMinutes
+        };
+      }
+      return obj;
+    }
+
     function loadState() {
       const base = {
         activeDay: "월",
         showPanel: true,
-        customCardio: false,
         body: {
           weightKg: 70,
           skeletalMuscleKg: 33,
           bodyFatKg: 12
         },
-        cardio: {
-          ...(DAY_CARDIO_PRESETS["월"] || {}),
-          liftingMinutes: 35
-        },
+        cardioByDay: buildDefaultCardioByDay(35),
         routine: structuredClone(DEFAULT_ROUTINE),
         logs: {}
       };
@@ -521,11 +528,27 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return base;
         const parsed = JSON.parse(raw);
+
+        const mergedCardioByDay = buildDefaultCardioByDay(parsed.cardio?.liftingMinutes ?? 35);
+        for (const d of DAYS) {
+          if (parsed.cardioByDay && parsed.cardioByDay[d]) {
+            mergedCardioByDay[d] = {
+              ...mergedCardioByDay[d],
+              ...parsed.cardioByDay[d]
+            };
+          } else if (parsed.cardio) {
+            mergedCardioByDay[d] = {
+              ...mergedCardioByDay[d],
+              ...parsed.cardio
+            };
+          }
+        }
+
         return {
           ...base,
           ...parsed,
           body: { ...base.body, ...(parsed.body || {}) },
-          cardio: { ...base.cardio, ...(parsed.cardio || {}) },
+          cardioByDay: mergedCardioByDay,
           routine: parsed.routine || base.routine,
           logs: parsed.logs || {}
         };
@@ -538,21 +561,27 @@
     let timerSec = 120;
     let timerInterval = null;
 
+    function getCurrentCardio() {
+      const day = state.activeDay || "월";
+      if (!state.cardioByDay) {
+        state.cardioByDay = buildDefaultCardioByDay(35);
+      }
+      if (!state.cardioByDay[day]) {
+        state.cardioByDay[day] = {
+          ...(DAY_CARDIO_PRESETS[day] || DAY_CARDIO_PRESETS["월"]),
+          liftingMinutes: 35
+        };
+      }
+      return state.cardioByDay[day];
+    }
+
     function saveState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
 
     function switchDay(d) {
       state.activeDay = d;
-      if (!state.customCardio) {
-        const preset = DAY_CARDIO_PRESETS[d];
-        if (preset) {
-          state.cardio = {
-            ...preset,
-            liftingMinutes: state.cardio?.liftingMinutes ?? 35
-          };
-        }
-      }
+      getCurrentCardio();
       saveState();
       render();
     }
@@ -571,35 +600,29 @@
     }
 
     function updateCardio(field, val) {
-      if (!state.cardio) {
-        state.cardio = {
-          ...(DAY_CARDIO_PRESETS[state.activeDay || "월"] || {}),
-          liftingMinutes: 35
-        };
-      }
+      const cardio = getCurrentCardio();
       if (field === "mode") {
-        state.cardio.mode = val;
-        state.customCardio = true;
+        cardio.mode = val;
         saveState();
         render();
         return;
       }
       const parsed = parseFloat(val);
       const nextVal = Number.isNaN(parsed) ? 0 : Math.max(0, parsed);
-      state.cardio[field] = nextVal;
-      state.customCardio = true;
+      cardio[field] = nextVal;
       saveState();
       updateStatsOnly();
     }
 
     function updateStatsOnly() {
       const day = state.activeDay;
+      const cardio = getCurrentCardio();
       const volInfo = calcTotalVolume(day);
       const kcalInfo = calcEstimatedCalories(volInfo);
 
-      const cardioMetaText = state.cardio.mode === "interval_incline"
-        ? `${kcalInfo.cardioLabel} · 워밍업 ${state.cardio.warmupSec}초 + ${state.cardio.highSec}초/${state.cardio.lowSec}초 × ${state.cardio.rounds}회`
-        : `${kcalInfo.cardioLabel} · ${state.cardio.minutes}분`;
+      const cardioMetaText = cardio.mode === "interval_incline"
+        ? `${kcalInfo.cardioLabel} · 워밍업 ${cardio.warmupSec}초 + ${cardio.highSec}초/${cardio.lowSec}초 × ${cardio.rounds}회`
+        : `${kcalInfo.cardioLabel} · ${cardio.minutes}분`;
 
       const summaryEl = document.getElementById("daySummary");
       if (summaryEl) summaryEl.textContent = `${DAY_NAMES[day]} · ${cardioMetaText}`;
@@ -733,6 +756,7 @@
     }
 
     function calcEstimatedCalories(volInfo) {
+      const cardio = getCurrentCardio();
       const wKg = Math.max(35, Number(state.body.weightKg) || 70);
       const smmKg = Math.max(0, Number(state.body.skeletalMuscleKg) || 0);
       const fatKg = Math.max(0, Number(state.body.bodyFatKg) || 0);
@@ -746,9 +770,9 @@
         ffmFactor = Math.min(1.08, Math.max(0.94, 0.9 + leanRatio * 0.12));
       }
 
-      const incline = Math.max(0, Math.min(25, Number(state.cardio.inclinePct) || 0));
-      const lowSpd = Math.max(0.5, Number(state.cardio.lowSpeedKmh) || 3.3);
-      const highSpd = Math.max(0.5, Number(state.cardio.highSpeedKmh) || 5.5);
+      const incline = Math.max(0, Math.min(25, Number(cardio.inclinePct) || 0));
+      const lowSpd = Math.max(0.5, Number(cardio.lowSpeedKmh) || 3.3);
+      const highSpd = Math.max(0.5, Number(cardio.highSpeedKmh) || 5.5);
 
       const lowMet = calcWalkMet(lowSpd, incline);
       const highMet = calcWalkMet(highSpd, incline);
@@ -756,12 +780,12 @@
       let cardioKcal = 0;
       let cardioLabel = "인클라인 트레드밀";
 
-      if (state.cardio.mode === "interval_incline") {
+      if (cardio.mode === "interval_incline") {
         cardioLabel = `인터벌 (${incline}%, ${lowSpd}/${highSpd}km/h)`;
-        const warmupHours = (Math.max(0, Number(state.cardio.warmupSec) || 0)) / 3600;
-        const highSec = Math.max(0, Number(state.cardio.highSec) || 0);
-        const lowSec = Math.max(0, Number(state.cardio.lowSec) || 0);
-        const rounds = Math.max(0, Number(state.cardio.rounds) || 0);
+        const warmupHours = (Math.max(0, Number(cardio.warmupSec) || 0)) / 3600;
+        const highSec = Math.max(0, Number(cardio.highSec) || 0);
+        const lowSec = Math.max(0, Number(cardio.lowSec) || 0);
+        const rounds = Math.max(0, Number(cardio.rounds) || 0);
 
         const highHours = (highSec * rounds) / 3600;
         const lowHours = (lowSec * rounds) / 3600;
@@ -776,11 +800,11 @@
         ) * wKg * ffmFactor;
       } else {
         cardioLabel = `기본 (${incline}%, ${lowSpd}km/h)`;
-        const totalHours = (Number(state.cardio.minutes) || 0) / 60;
+        const totalHours = (Number(cardio.minutes) || 0) / 60;
         cardioKcal = lowMet * wKg * totalHours * ffmFactor;
       }
 
-      const liftHours = (Number(state.cardio.liftingMinutes) || 0) / 60;
+      const liftHours = (Number(cardio.liftingMinutes) || 0) / 60;
       const volumeBonus = volInfo.volume * 0.002;
       const liftingKcal = (4.2 * wKg * liftHours * ffmFactor) + volumeBonus;
 
@@ -896,6 +920,8 @@
 
     function render() {
       const day = state.activeDay;
+      const cardio = getCurrentCardio();
+
       document.getElementById("dayTabs").innerHTML = DAYS.map(d =>
         `<button class="tab ${day === d ? "active" : ""}" onclick="switchDay('${d}')">${d}요일</button>`
       ).join("");
@@ -903,9 +929,9 @@
       const volInfo = calcTotalVolume(day);
       const kcalInfo = calcEstimatedCalories(volInfo);
 
-      const cardioMetaText = state.cardio.mode === "interval_incline"
-        ? `${kcalInfo.cardioLabel} · 워밍업 ${state.cardio.warmupSec}초 + ${state.cardio.highSec}초/${state.cardio.lowSec}초 × ${state.cardio.rounds}회`
-        : `${kcalInfo.cardioLabel} · ${state.cardio.minutes}분`;
+      const cardioMetaText = cardio.mode === "interval_incline"
+        ? `${kcalInfo.cardioLabel} · 워밍업 ${cardio.warmupSec}초 + ${cardio.highSec}초/${cardio.lowSec}초 × ${cardio.rounds}회`
+        : `${kcalInfo.cardioLabel} · ${cardio.minutes}분`;
 
       document.getElementById("daySummary").textContent = `${DAY_NAMES[day]} · ${cardioMetaText}`;
 
@@ -928,45 +954,45 @@
         </div>
       `;
 
-      const intervalFieldsHtml = state.cardio.mode === "interval_incline" ? `
+      const intervalFieldsHtml = cardio.mode === "interval_incline" ? `
         <div class="form-box">
           <label>워밍업 시간 (초)</label>
-          <input type="number" step="10" value="${state.cardio.warmupSec}" onchange="updateCardio('warmupSec', this.value); render();" />
+          <input type="number" step="10" value="${cardio.warmupSec}" onchange="updateCardio('warmupSec', this.value); render();" />
         </div>
         <div class="form-box">
           <label>인터벌 반복 횟수 (라운드)</label>
-          <input type="number" step="1" value="${state.cardio.rounds}" onchange="updateCardio('rounds', this.value); render();" />
+          <input type="number" step="1" value="${cardio.rounds}" onchange="updateCardio('rounds', this.value); render();" />
         </div>
         <div class="form-box">
           <label>고강도 시간 (초)</label>
-          <input type="number" step="5" value="${state.cardio.highSec}" onchange="updateCardio('highSec', this.value); render();" />
+          <input type="number" step="5" value="${cardio.highSec}" onchange="updateCardio('highSec', this.value); render();" />
         </div>
         <div class="form-box">
           <label>저강도 휴식 (초)</label>
-          <input type="number" step="5" value="${state.cardio.lowSec}" onchange="updateCardio('lowSec', this.value); render();" />
+          <input type="number" step="5" value="${cardio.lowSec}" onchange="updateCardio('lowSec', this.value); render();" />
         </div>
         <div class="form-box">
           <label>고강도 속도 (km/h)</label>
-          <input type="number" step="0.1" value="${state.cardio.highSpeedKmh}" onchange="updateCardio('highSpeedKmh', this.value); render();" />
+          <input type="number" step="0.1" value="${cardio.highSpeedKmh}" onchange="updateCardio('highSpeedKmh', this.value); render();" />
         </div>
         <div class="form-box">
           <label>워밍업·저강도 속도 (km/h)</label>
-          <input type="number" step="0.1" value="${state.cardio.lowSpeedKmh}" onchange="updateCardio('lowSpeedKmh', this.value); render();" />
+          <input type="number" step="0.1" value="${cardio.lowSpeedKmh}" onchange="updateCardio('lowSpeedKmh', this.value); render();" />
         </div>
       ` : `
         <div class="form-box">
           <label>인클라인 트레드밀 시간 (분)</label>
-          <input type="number" step="1" value="${state.cardio.minutes}" onchange="updateCardio('minutes', this.value); render();" />
+          <input type="number" step="1" value="${cardio.minutes}" onchange="updateCardio('minutes', this.value); render();" />
         </div>
         <div class="form-box">
           <label>속도 (km/h)</label>
-          <input type="number" step="0.1" value="${state.cardio.lowSpeedKmh}" onchange="updateCardio('lowSpeedKmh', this.value); render();" />
+          <input type="number" step="0.1" value="${cardio.lowSpeedKmh}" onchange="updateCardio('lowSpeedKmh', this.value); render();" />
         </div>
       `;
 
       const panelHtml = state.showPanel ? `
         <section class="card">
-          <h2 class="ex-title">체형 변동 및 인클라인 설정</h2>
+          <h2 class="ex-title">체형 변동 및 ${day}요일 유산소 설정</h2>
           <div class="form-grid">
             <div class="form-box">
               <label>현재 몸무게 (kg)</label>
@@ -982,23 +1008,23 @@
             </div>
             <div class="form-box">
               <label>순수 웨이트 시간 (분, 휴식 제외)</label>
-              <input type="number" step="5" value="${state.cardio.liftingMinutes}" onchange="updateCardio('liftingMinutes', this.value); render();" />
+              <input type="number" step="5" value="${cardio.liftingMinutes}" onchange="updateCardio('liftingMinutes', this.value); render();" />
             </div>
             <div class="form-box">
-              <label>트레드밀 방식</label>
+              <label>${day}요일 트레드밀 방식</label>
               <select onchange="updateCardio('mode', this.value)">
-                <option value="steady_incline" ${state.cardio.mode === "steady_incline" ? "selected" : ""}>인클라인 트레드밀</option>
-                <option value="interval_incline" ${state.cardio.mode === "interval_incline" ? "selected" : ""}>인클라인 인터벌 트레드밀</option>
+                <option value="steady_incline" ${cardio.mode === "steady_incline" ? "selected" : ""}>인클라인 트레드밀</option>
+                <option value="interval_incline" ${cardio.mode === "interval_incline" ? "selected" : ""}>인클라인 인터벌 트레드밀</option>
               </select>
             </div>
             <div class="form-box">
               <label>인클라인 각도 (%)</label>
-              <input type="number" step="0.5" min="0" max="25" value="${state.cardio.inclinePct}" onchange="updateCardio('inclinePct', this.value); render();" />
+              <input type="number" step="0.5" min="0" max="25" value="${cardio.inclinePct}" onchange="updateCardio('inclinePct', this.value); render();" />
             </div>
             ${intervalFieldsHtml}
           </div>
           <div class="note">
-            * 입력 후 다른 곳을 누르거나 엔터를 치면 즉시 저장되며, 요일 이동이나 새로고침에도 유지됩니다.
+            * ${day}요일의 트레드밀 방식·각도·속도 설정은 해당 요일별로 따로 저장되며 다른 요일과 겹치지 않습니다.
           </div>
         </section>
       ` : "";
